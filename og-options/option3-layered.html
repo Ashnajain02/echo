@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background: hsl(40, 30%, 96%);
+    color: hsl(0, 0%, 10%);
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .stack {
+    position: relative;
+    text-align: center;
+    z-index: 1;
+  }
+  .echo {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 400;
+    font-size: 260px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: hsl(0, 0%, 10%);
+    position: relative;
+  }
+  .echo-ghost {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 400;
+    font-size: 260px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    pointer-events: none;
+  }
+  .g1 { color: hsl(30, 30%, 35%); opacity: 0.18; transform: translate(-50%, 0) translate(30px, 18px); }
+  .g2 { color: hsl(30, 30%, 35%); opacity: 0.10; transform: translate(-50%, 0) translate(60px, 36px); }
+  .g3 { color: hsl(30, 30%, 35%); opacity: 0.05; transform: translate(-50%, 0) translate(90px, 54px); }
+  .tag {
+    margin-top: 28px;
+    position: relative;
+    z-index: 2;
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    font-size: 20px;
+    letter-spacing: 0.4em;
+    color: hsl(30, 8%, 45%);
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+  <div class="stack">
+    <div style="position: relative; display: inline-block;">
+      <span class="echo-ghost g3">Echo</span>
+      <span class="echo-ghost g2">Echo</span>
+      <span class="echo-ghost g1">Echo</span>
+      <span class="echo">Echo</span>
+    </div>
+    <div class="tag">A journaling experience</div>
+  </div>
+</body>
+</html>
