@@ -8,26 +8,30 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
-    <!-- Spotify SDK: define callback BEFORE loading script to avoid "not defined" error -->
+    <!-- Spotify Web Playback SDK: the callback MUST be defined before the
+         script loads (the SDK calls it synchronously on ready), and we install
+         an error handler so a CDN outage doesn't leave the app hanging on
+         `window.__spotifySDKReady`. -->
     <link rel="dns-prefetch" href="https://sdk.scdn.co" />
     <link rel="preconnect" href="https://sdk.scdn.co" crossorigin />
     <script>
-      // CRITICAL: Define the callback BEFORE the SDK script loads.
-      // The SDK calls this immediately when ready, so it must exist.
       window.__spotifySDKReadyPromiseResolvers = [];
-      window.onSpotifyWebPlaybackSDKReady = function() {
-        console.log('[Spotify] SDK ready callback fired (from index.html)');
+      window.__spotifySDKLoadFailed = false;
+      window.onSpotifyWebPlaybackSDKReady = function () {
         window.__spotifySDKReady = true;
-        // Resolve all waiting promises
-        window.__spotifySDKReadyPromiseResolvers.forEach(function(resolve) { resolve(); });
+        window.__spotifySDKReadyPromiseResolvers.forEach(function (resolve) { resolve(); });
         window.__spotifySDKReadyPromiseResolvers = [];
       };
     </script>
-    <script id="spotify-player-sdk" src="https://sdk.scdn.co/spotify-player.js" async></script>
+    <script
+      id="spotify-player-sdk"
+      src="https://sdk.scdn.co/spotify-player.js"
+      async
+      onerror="window.__spotifySDKLoadFailed = true; console.error('[Spotify] Web Playback SDK failed to load (CDN unreachable?)');"
+    ></script>
 
     <title>Echo</title>
     <meta name="description" content="Your personal journal for capturing moments, moods, and memories" />
-    <meta name="author" content="Lovable" />
 
     <meta property="og:title" content="Echo" />
     <meta property="og:description" content="Your personal journal for capturing moments, moods, and memories" />
@@ -51,8 +55,6 @@
 
   <body>
     <div id="root"></div>
-    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
-    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

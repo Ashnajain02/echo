@@ -1,10 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 interface AudioPlayerState {
   isPlaying: boolean;
   isLoading: boolean;
   position: number;
   duration: number;
+  error: string | null;
 }
 
 export function useAudioPlayer() {
@@ -13,15 +15,24 @@ export function useAudioPlayer() {
     isLoading: false,
     position: 0,
     duration: 0,
+    error: null,
   });
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const clipEndRef = useRef<number>(30);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const canPlayHandlerRef = useRef<(() => void) | null>(null);
 
   const clearInterval_ = () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+    }
+  };
+
+  const detachCanPlay = () => {
+    if (audioRef.current && canPlayHandlerRef.current) {
+      audioRef.current.removeEventListener('canplay', canPlayHandlerRef.current);
+      canPlayHandlerRef.current = null;
     }
   };
 
@@ -34,13 +45,41 @@ export function useAudioPlayer() {
   }, []);
 
   const playClip = useCallback((previewUrl: string, startSeconds: number, endSeconds: number) => {
-    // Reuse or create audio element
+    if (!previewUrl) {
+      logger.error('useAudioPlayer', 'playClip called with empty previewUrl');
+      setState(prev => ({ ...prev, isLoading: false, error: 'No preview available for this song.' }));
+      return;
+    }
+    if (!previewUrl.startsWith('http')) {
+      logger.error('useAudioPlayer', 'playClip called with non-http URL (likely legacy spotify: URI):', previewUrl);
+      setState(prev => ({ ...prev, isLoading: false, error: 'This song was saved in an older format and can’t be played. Re-attach the song to fix.' }));
+      return;
+    }
+
     if (!audioRef.current) {
       audioRef.current = new Audio();
+      audioRef.current.preload = 'auto';
+      audioRef.current.addEventListener('error', () => {
+        const mediaError = audioRef.current?.error;
+        logger.error('useAudioPlayer', 'audio element error', {
+          code: mediaError?.code,
+          message: mediaError?.message,
+          src: audioRef.current?.src,
+        });
+        clearInterval_();
+        detachCanPlay();
+        setState(prev => ({
+          ...prev,
+          isPlaying: false,
+          isLoading: false,
+          error: 'Couldn’t load this song’s preview. The clip URL may be expired or blocked.',
+        }));
+      });
     }
     const audio = audioRef.current;
 
-    // If same source, just seek
+    detachCanPlay();
+
     if (audio.src === previewUrl) {
       audio.currentTime = startSeconds;
     } else {
@@ -49,7 +88,7 @@ export function useAudioPlayer() {
     }
 
     clipEndRef.current = endSeconds;
-    setState(prev => ({ ...prev, isLoading: true }));
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     const onCanPlay = () => {
       audio.currentTime = startSeconds;
@@ -59,9 +98,9 @@ export function useAudioPlayer() {
           isPlaying: true,
           isLoading: false,
           duration: audio.duration,
+          error: null,
         }));
 
-        // Track position and auto-stop at clip end
         clearInterval_();
         intervalRef.current = setInterval(() => {
           if (audio.currentTime >= clipEndRef.current) {
@@ -70,24 +109,37 @@ export function useAudioPlayer() {
             setState(prev => ({ ...prev, position: audio.currentTime }));
           }
         }, 100);
-      }).catch(() => {
-        setState(prev => ({ ...prev, isLoading: false }));
+      }).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        const isAutoplayBlocked = err instanceof DOMException && err.name === 'NotAllowedError';
+        logger.error('useAudioPlayer', 'audio.play() rejected', { message, src: audio.src });
+        setState(prev => ({
+          ...prev,
+          isPlaying: false,
+          isLoading: false,
+          error: isAutoplayBlocked
+            ? 'Your browser blocked playback. Tap the play button again.'
+            : 'Couldn’t start the song. ' + message,
+        }));
       });
-      audio.removeEventListener('canplay', onCanPlay);
+      detachCanPlay();
     };
 
+    canPlayHandlerRef.current = onCanPlay;
     audio.addEventListener('canplay', onCanPlay);
     audio.load();
   }, [pause]);
 
-  // Cleanup on unmount — remove all listeners and stop audio
+  const clearError = useCallback(() => {
+    setState(prev => (prev.error ? { ...prev, error: null } : prev));
+  }, []);
+
   useEffect(() => {
     return () => {
       clearInterval_();
+      detachCanPlay();
       const audio = audioRef.current;
       if (audio) {
-        // Remove any lingering canplay listeners
-        audio.oncanplay = null;
         audio.pause();
         audio.src = '';
       }
@@ -98,5 +150,6 @@ export function useAudioPlayer() {
     ...state,
     playClip,
     pause,
+    clearError,
   };
 }

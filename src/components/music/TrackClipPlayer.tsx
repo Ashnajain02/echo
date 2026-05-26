@@ -1,8 +1,10 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useEffect, useId, useMemo } from 'react';
+import { toast } from 'sonner';
 import { MusicTrack } from '@/types';
 import { Play, Pause, Music, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { useNowPlaying } from '@/contexts/NowPlayingContext';
 import { formatTime } from '@/utils/formatTime';
 
 interface TrackClipPlayerProps {
@@ -11,7 +13,6 @@ interface TrackClipPlayerProps {
   clipEndSeconds?: number;
   className?: string;
   onPlayStateChange?: (isPlaying: boolean) => void;
-  shouldPause?: boolean;
 }
 
 const TrackClipPlayer: React.FC<TrackClipPlayerProps> = ({
@@ -20,21 +21,28 @@ const TrackClipPlayer: React.FC<TrackClipPlayerProps> = ({
   clipEndSeconds = 30,
   className,
   onPlayStateChange,
-  shouldPause,
 }) => {
-  const { isPlaying, isLoading, position, playClip, pause } = useAudioPlayer();
-  const previewUrl = track.uri; // uri field stores the preview URL
+  const { isPlaying, isLoading, position, error, playClip, pause, clearError } = useAudioPlayer();
+  const { registerPlayer, notifyPlaying, notifyStopped } = useNowPlaying();
+  const playerId = useId();
+  const previewUrl = track.uri;
 
-  // Auto-pause when shouldPause becomes true
+  const isPlayable = Boolean(previewUrl && previewUrl.startsWith('http'));
+
   useEffect(() => {
-    if (shouldPause && isPlaying) {
+    return registerPlayer(playerId, () => {
       pause();
       onPlayStateChange?.(false);
-    }
-  }, [shouldPause, isPlaying, pause, onPlayStateChange]);
+    });
+  }, [playerId, registerPlayer, pause, onPlayStateChange]);
 
-  // Check if this is a playable preview URL (not an old spotify:track: URI)
-  const isPlayable = previewUrl && previewUrl.startsWith('http');
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      clearError();
+      notifyStopped(playerId);
+    }
+  }, [error, clearError, notifyStopped, playerId]);
 
   const clipDuration = clipEndSeconds - clipStartSeconds;
   const progress = useMemo(() => {
@@ -45,8 +53,10 @@ const TrackClipPlayer: React.FC<TrackClipPlayerProps> = ({
   const handleToggle = () => {
     if (isPlaying) {
       pause();
+      notifyStopped(playerId);
       onPlayStateChange?.(false);
     } else {
+      notifyPlaying(playerId);
       playClip(previewUrl, clipStartSeconds, clipEndSeconds);
       onPlayStateChange?.(true);
     }
@@ -54,7 +64,6 @@ const TrackClipPlayer: React.FC<TrackClipPlayerProps> = ({
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      {/* Album art */}
       {track.albumArt ? (
         <img
           src={track.albumArt}
@@ -67,10 +76,8 @@ const TrackClipPlayer: React.FC<TrackClipPlayerProps> = ({
         </div>
       )}
 
-      {/* Track info + controls */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          {/* Play/pause button */}
           {isPlayable && (
             <button
               onClick={handleToggle}
@@ -92,7 +99,6 @@ const TrackClipPlayer: React.FC<TrackClipPlayerProps> = ({
           </div>
         </div>
 
-        {/* Progress bar — only visible when playing */}
         {isPlaying && (
           <div className="mt-1.5 flex items-center gap-2">
             <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">

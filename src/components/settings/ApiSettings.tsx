@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
+import { apiKeysTable } from '@/integrations/supabase/extensions';
 import { useToast } from '@/hooks/use-toast';
 import { Copy, Key, RefreshCw, Trash2, Eye, EyeOff } from 'lucide-react';
 import { formatShortDate, formatDateTimeStamp } from '@/utils/dateUtils';
+import { logger } from '@/lib/logger';
 
 interface KeyMeta {
   created_at: string;
@@ -25,16 +27,18 @@ export const ApiSettings: React.FC = () => {
   useEffect(() => {
     const fetchKeyMeta = async () => {
       try {
-        const { data, error } = await (supabase as any)
-          .from('api_keys')
+        const { data, error } = await apiKeysTable()
           .select('created_at, last_used_at')
           .maybeSingle();
 
         if (!error && data) {
-          setKeyMeta(data);
+          setKeyMeta({
+            created_at: data.created_at,
+            last_used_at: data.last_used_at,
+          });
         }
-      } catch {
-        // ignore
+      } catch (error) {
+        logger.warn('ApiSettings', 'failed to fetch api_keys metadata:', error);
       } finally {
         setIsLoading(false);
       }
@@ -59,7 +63,7 @@ export const ApiSettings: React.FC = () => {
       setKeyMeta({ created_at: new Date().toISOString(), last_used_at: null });
       setShowKey(true);
     } catch (error) {
-      console.error('Error generating API key:', error);
+      logger.error('ApiSettings', 'failed to generate API key:', error);
       toast({
         title: 'Error',
         description: 'Failed to generate API key.',
@@ -85,7 +89,7 @@ export const ApiSettings: React.FC = () => {
       setKeyMeta(null);
       setShowKey(false);
     } catch (error) {
-      console.error('Error revoking API key:', error);
+      logger.error('ApiSettings', 'failed to revoke API key:', error);
       toast({
         title: 'Error',
         description: 'Failed to revoke API key.',
@@ -101,7 +105,7 @@ export const ApiSettings: React.FC = () => {
     navigator.clipboard.writeText(freshKey);
   };
 
-  const endpoint = 'https://veorhexddrwlwxtkuycb.supabase.co/functions/v1/journal-stats';
+  const endpoint = `${SUPABASE_URL}/functions/v1/journal-stats`;
 
   return (
     <Card>

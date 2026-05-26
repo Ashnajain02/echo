@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { encryptJournalEntry, decryptJournalEntry } from '@/utils/encryption';
 import { mapDbRowToJournalEntry, buildDbPayload, hasMeaningfulContent, getPlainTextContent } from '@/utils/journalEntryMapper';
 import { getLocalDate, getUtcTimestamp, getUserTimezone } from '@/utils/dateUtils';
+import { logger } from '@/lib/logger';
 
 interface DraftsContextType {
   drafts: JournalEntry[];
@@ -65,7 +66,7 @@ export function DraftsProvider({ children }: { children: React.ReactNode }) {
 
       setDrafts(decryptedDrafts);
     } catch (error: unknown) {
-      console.error('Error loading drafts:', error);
+      logger.error('DraftsContext', 'failed to load drafts:', error);
     } finally {
       setIsLoadingDrafts(false);
     }
@@ -163,7 +164,7 @@ export function DraftsProvider({ children }: { children: React.ReactNode }) {
       setLastAutoSave(new Date());
       return savedId;
     } catch (error: unknown) {
-      console.error('Error saving draft:', error);
+      logger.error('DraftsContext', 'failed to save draft:', error);
       return null;
     }
   }, [authState.user]);
@@ -222,7 +223,7 @@ export function DraftsProvider({ children }: { children: React.ReactNode }) {
       if (currentDraft?.id === draftId) setCurrentDraft(null);
 
     } catch (error: unknown) {
-      console.error('Error deleting draft:', error);
+      logger.error('DraftsContext', 'failed to delete draft:', error);
     }
   }, [authState.user, currentDraft]);
 
@@ -289,7 +290,7 @@ export function DraftsProvider({ children }: { children: React.ReactNode }) {
 
       setCurrentDraft(null);
     } catch (error: unknown) {
-      console.error('Error publishing draft:', error);
+      logger.error('DraftsContext', 'failed to publish draft:', error);
     }
   }, [authState.user, saveDraft]);
 

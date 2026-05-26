@@ -10,6 +10,6 @@ export interface AuthState {
 export interface SignUpMetadata {
   first_name?: string;
   last_name?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 

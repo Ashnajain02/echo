@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import MusicSection from '@/components/music/MusicSection';
 import { useWeatherData } from '@/hooks/useWeatherData';
 import MoodSelector from '@/components/MoodSelector';
-import WeatherDisplay from '@/components/WeatherDisplay';
+import WeatherDisplay from './WeatherDisplay';
 import RichTextEditor from './RichTextEditor';
 import EntryPageLayout from '@/components/shared/EntryPageLayout';
 import { X, Check } from 'lucide-react';

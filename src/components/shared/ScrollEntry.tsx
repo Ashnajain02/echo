@@ -49,7 +49,6 @@ const ScrollEntry: React.FC<ScrollEntryProps> = ({ entry, isPreview = false, sho
           isFullView
           isPreview={isPreview}
           initialWeatherEnabled={isInView}
-          shouldPauseMusic={!isInView}
         />
       </div>
     </div>

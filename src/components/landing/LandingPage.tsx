@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import LandingEntry from './LandingEntry';
 import EncryptionAnimation from './EncryptionAnimation';
+import ContactSection from './ContactSection';
 import { landingEntries } from '@/data/landingEntries';
+import { DemoModeProvider } from '@/contexts/DemoModeContext';
 
 const LandingPage: React.FC = () => {
   return (
+    <DemoModeProvider>
     <div className="min-h-screen bg-background">
       {/* Hero — minimal, above the fold */}
       <section className="h-screen flex flex-col items-center justify-center relative px-6">
@@ -107,7 +110,11 @@ const LandingPage: React.FC = () => {
           </p>
         </motion.div>
       </section>
+
+      {/* Contact */}
+      <ContactSection />
     </div>
+    </DemoModeProvider>
   );
 };
 

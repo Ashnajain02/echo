@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { AuthButtons } from './AuthButtons';
 import { Notebook, Sparkles, Settings, Menu, X, ListChecks } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useOnThisDayIndicator } from '@/hooks/useOnThisDayIndicator';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { showDot: showMemoriesDot } = useOnThisDayIndicator();
 
   const isActive = (pathname: string) => {
     return location.pathname === pathname;
@@ -23,10 +25,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isAuthPage = location.pathname === '/auth';
 
   const navLinks = [
-    { to: '/', icon: Notebook, label: 'Journal' },
-    { to: '/habits', icon: ListChecks, label: 'Habits' },
-    { to: '/memories', icon: Sparkles, label: 'Memories' },
-    { to: '/settings', icon: Settings, label: 'Settings' },
+    { to: '/', icon: Notebook, label: 'Journal', showDot: false },
+    { to: '/habits', icon: ListChecks, label: 'Habits', showDot: false },
+    { to: '/memories', icon: Sparkles, label: 'Memories', showDot: showMemoriesDot },
+    { to: '/settings', icon: Settings, label: 'Settings', showDot: false },
   ];
 
   const handleNavClick = () => {
@@ -45,7 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Desktop Navigation */}
             {!isAuthPage && !isMobile && (
               <nav className="flex items-center space-x-1">
-                {navLinks.map(({ to, icon: Icon, label }) => (
+                {navLinks.map(({ to, icon: Icon, label, showDot }) => (
                   <Link
                     key={to}
                     to={to}
@@ -56,7 +58,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    <span className="relative inline-flex">
+                      <Icon className="h-4 w-4" />
+                      {showDot && (
+                        <span
+                          aria-label="New memory from a past year"
+                          className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary ring-1 ring-background"
+                        />
+                      )}
+                    </span>
                     <span className="font-body">{label}</span>
                   </Link>
                 ))}
@@ -82,7 +92,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {!isAuthPage && isMobile && mobileMenuOpen && (
           <div className="border-t border-border/50 bg-background/95 backdrop-blur-sm">
             <nav className="container px-4 py-3 flex flex-col gap-1">
-              {navLinks.map(({ to, icon: Icon, label }) => (
+              {navLinks.map(({ to, icon: Icon, label, showDot }) => (
                 <Link
                   key={to}
                   to={to}
@@ -94,7 +104,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <span className="relative inline-flex">
+                    <Icon className="h-4 w-4" />
+                    {showDot && (
+                      <span
+                        aria-label="New memory from a past year"
+                        className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary ring-1 ring-background"
+                      />
+                    )}
+                  </span>
                   <span className="font-body">{label}</span>
                 </Link>
               ))}

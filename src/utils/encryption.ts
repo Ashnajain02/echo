@@ -1,10 +1,11 @@
-
 /**
- * Encryption utilities for securing user data
- * Uses AES-GCM algorithm with a key derived from the user's ID
+ * Encryption utilities for securing user data.
+ * Uses AES-GCM with a key derived from the user's ID via PBKDF2.
  */
+import type { JournalComment } from '@/types';
+import { logger } from '@/lib/logger';
 
-// Cache derived keys per user session to avoid 100K PBKDF2 iterations on every call
+// Cache derived keys per user session to avoid 100K PBKDF2 iterations on every call.
 const keyCache = new Map<string, CryptoKey>();
 
 export const deriveKeyFromUserId = async (userId: string): Promise<CryptoKey> => {
@@ -77,7 +78,7 @@ export const encryptText = async (text: string, userId: string): Promise<string>
     // Convert to base64 for storage
     return btoa(String.fromCharCode(...combinedData));
   } catch (error) {
-    console.error("Encryption failed:", error);
+    logger.error("encryption", "encryptText failed:", error);
     return text; // Fallback to unencrypted text if encryption fails
   }
 };
@@ -125,81 +126,77 @@ export const decryptText = async (encryptedText: string, userId: string): Promis
     const decoder = new TextDecoder();
     return decoder.decode(decryptedData);
   } catch (error) {
-    console.error("Decryption failed:", error);
+    logger.error("encryption", "decryptText failed:", error);
     return encryptedText; // Return original text if decryption fails
   }
 };
 
 /**
- * Encrypts a journal entry object (only the content field)
- * @param entry The journal entry to encrypt
- * @param userId User's ID for encryption
- * @returns A copy of the entry with encrypted content
+ * Minimal shape required for entry-level encrypt/decrypt.
+ * Generic over the concrete entry type so callers (JournalEntry, draft rows,
+ * etc.) get their original type back from these functions instead of a widened
+ * `Record<string, unknown>`.
  */
-export const encryptJournalEntry = async (entry: { content: string; comments?: unknown[] } & Record<string, unknown>, userId: string) => {
+type EncryptableEntry = { content: string; comments?: JournalComment[] };
+
+/**
+ * Encrypts the content field of an entry (and folds comments into the
+ * encrypted blob). Returns the same shape with `content` replaced by ciphertext
+ * and `comments` removed.
+ */
+export const encryptJournalEntry = async <T extends EncryptableEntry>(
+  entry: T,
+  userId: string,
+): Promise<T> => {
   if (!entry || !userId) return entry;
-  
-  const encryptedEntry = { ...entry };
-  
-  // Convert the entire entry to JSON string for encryption
-  // We include comments in the encrypted content
-  if (entry.content) {
-    // Prepare a structured object that includes content and comments
-    const dataToEncrypt = JSON.stringify({
-      content: entry.content,
-      comments: entry.comments || []
-    });
-    
-    // Encrypt the structured data
-    encryptedEntry.content = await encryptText(dataToEncrypt, userId);
-    
-    // Remove comments from the encrypted entry since they're now part of the encrypted content
-    delete encryptedEntry.comments;
-  }
-  
-  return encryptedEntry;
+  if (!entry.content) return { ...entry };
+
+  const dataToEncrypt = JSON.stringify({
+    content: entry.content,
+    comments: entry.comments ?? [],
+  });
+
+  const { comments: _comments, ...rest } = entry;
+  void _comments;
+
+  return {
+    ...(rest as T),
+    content: await encryptText(dataToEncrypt, userId),
+  };
 };
 
 /**
- * Decrypts a journal entry object (only the content field)
- * @param entry The journal entry to decrypt
- * @param userId User's ID for decryption
- * @returns A copy of the entry with decrypted content
+ * Decrypts the content field of an entry. Supports both the legacy plain-text
+ * format and the current JSON-wrapped `{ content, comments }` format.
  */
-export const decryptJournalEntry = async (entry: { content: string; comments?: unknown[] } & Record<string, unknown>, userId: string) => {
+export const decryptJournalEntry = async <T extends EncryptableEntry>(
+  entry: T,
+  userId: string,
+): Promise<T> => {
   if (!entry || !userId) return entry;
-  
-  const decryptedEntry = { ...entry };
-  
-  // Decrypt the content field if it exists
-  if (entry.content) {
+  if (!entry.content) return { ...entry };
+
+  try {
+    const decryptedText = await decryptText(entry.content, userId);
+
     try {
-      // Decrypt the content field
-      const decryptedText = await decryptText(entry.content, userId);
-      
-      // Try to parse it as JSON (new format)
-      try {
-        const parsedData = JSON.parse(decryptedText);
-        if (parsedData && typeof parsedData === 'object') {
-          // New format: has structured data with content and comments
-          decryptedEntry.content = parsedData.content || '';
-          decryptedEntry.comments = parsedData.comments || [];
-        } else {
-          // Legacy format: just plain content
-          decryptedEntry.content = decryptedText;
-          decryptedEntry.comments = [];
-        }
-      } catch (parseError) {
-        // If parsing fails, it's probably just plain text (legacy format)
-        decryptedEntry.content = decryptedText;
-        decryptedEntry.comments = [];
+      const parsed = JSON.parse(decryptedText);
+      if (parsed && typeof parsed === 'object' && typeof parsed.content === 'string') {
+        return {
+          ...entry,
+          content: parsed.content,
+          comments: Array.isArray(parsed.comments) ? parsed.comments : [],
+        };
       }
-    } catch (decryptError) {
-      console.error("Error decrypting entry:", decryptError);
-      decryptedEntry.content = entry.content;  // Keep encrypted if decryption fails
-      decryptedEntry.comments = [];
+    } catch {
+      // Fall through — legacy plain-text format.
     }
+
+    return { ...entry, content: decryptedText, comments: [] };
+  } catch (decryptError) {
+    logger.error('encryption', 'failed to decrypt entry:', decryptError);
+    // Keep the ciphertext as content so the failure is visible upstream
+    // rather than silently producing an empty entry.
+    return { ...entry, comments: [] };
   }
-  
-  return decryptedEntry;
 };

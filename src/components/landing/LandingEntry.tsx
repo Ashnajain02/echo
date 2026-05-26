@@ -4,7 +4,7 @@ import EntryPageLayout from '@/components/shared/EntryPageLayout';
 import TrackClipPlayer from '@/components/music/TrackClipPlayer';
 import InteractiveContent from '@/components/journal/InteractiveContent';
 import ReflectionModule from '@/components/journal/ReflectionModule';
-import CommentSection from '@/components/CommentSection';
+import CommentSection from '@/components/journal/CommentSection';
 import { formatTemperature } from '@/utils/temperature';
 
 interface LandingEntryProps {
@@ -16,14 +16,19 @@ const LandingEntry: React.FC<LandingEntryProps> = ({ entry }) => {
   const [comments, setComments] = useState<JournalComment[]>(entry.comments || []);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-play weather when entry scrolls into view
+  // Auto-enable weather when entry scrolls into view.
+  // Intentionally one-way: do NOT auto-disable when the entry shrinks below
+  // the threshold (e.g. when the Notes section expands and pushes content out
+  // of view). The user controls disabling via the "Weather on/off" toggle.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
     const observer = new IntersectionObserver(
       ([e]) => {
-        setWeatherEnabled(e.isIntersecting);
+        if (e.isIntersecting) {
+          setWeatherEnabled(true);
+        }
       },
       { threshold: 0.4 }
     );
@@ -73,7 +78,6 @@ const LandingEntry: React.FC<LandingEntryProps> = ({ entry }) => {
                   reflectionQuestion={entry.reflectionQuestion || null}
                   reflectionAnswer={entry.reflectionAnswer || null}
                   onReflectionUpdate={handleReflectionUpdate}
-                  demo
                 />
               </div>
               <div className="pb-6 pt-2">
@@ -93,7 +97,6 @@ const LandingEntry: React.FC<LandingEntryProps> = ({ entry }) => {
                 track={entry.track}
                 clipStartSeconds={entry.track.clipStartSeconds}
                 clipEndSeconds={entry.track.clipEndSeconds}
-                shouldPause={!weatherEnabled}
               />
             </div>
           )}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getLocalDate, extractLocalDate } from '@/utils/dateUtils';
+import { logger } from '@/lib/logger';
 
 import confetti from 'canvas-confetti';
 
@@ -26,19 +28,7 @@ export function useHabits() {
   const [loading, setLoading] = useState(true);
   const [allCompletedToday, setAllCompletedToday] = useState(false);
 
-  const getLocalDateString = () => {
-    const now = new Date();
-    const tzOffsetMs = now.getTimezoneOffset() * 60 * 1000;
-    return new Date(now.getTime() - tzOffsetMs).toISOString().slice(0, 10);
-  };
-
-  const getLocalDateFromTimestamp = (timestamp: string) => {
-    const d = new Date(timestamp);
-    const tzOffsetMs = d.getTimezoneOffset() * 60 * 1000;
-    return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 10);
-  };
-
-  const [today, setToday] = useState<string>(getLocalDateString);
+  const [today, setToday] = useState<string>(getLocalDate);
 
   const fetchHabits = useCallback(async () => {
     if (!user) return;
@@ -52,7 +42,7 @@ export function useHabits() {
       if (error) throw error;
       setHabits(data || []);
     } catch (error) {
-      console.error('Error fetching habits:', error);
+      logger.error('useHabits', 'failed to fetch habits:', error);
     }
   }, [user]);
 
@@ -72,11 +62,11 @@ export function useHabits() {
       // Backward-compatible guard: if older data was written using UTC-based dates,
       // it can appear to "carry over" into the next local day. We only treat a
       // completion as belonging to today if its timestamp is also today locally.
-      const todaysRows = rows.filter((c) => getLocalDateFromTimestamp(c.created_at) === today);
+      const todaysRows = rows.filter((c) => extractLocalDate(c.created_at) === today);
 
       setCompletions(todaysRows);
     } catch (error) {
-      console.error('Error fetching completions:', error);
+      logger.error('useHabits', 'failed to fetch completions:', error);
     }
   }, [user, today]);
 
@@ -114,7 +104,7 @@ export function useHabits() {
 
   // Keep "today" synced to the user's *local* calendar day (not UTC).
   useEffect(() => {
-    const syncToday = () => setToday(getLocalDateString());
+    const syncToday = () => setToday(getLocalDate());
 
     const intervalId = window.setInterval(syncToday, 60 * 1000);
     window.addEventListener('focus', syncToday);
@@ -162,7 +152,7 @@ export function useHabits() {
       if (error) throw error;
       setHabits(prev => [...prev, data]);
     } catch (error) {
-      console.error('Error adding habit:', error);
+      logger.error('useHabits', 'failed to add habit:', error);
     }
   };
 
@@ -178,7 +168,7 @@ export function useHabits() {
       if (error) throw error;
       setHabits(prev => prev.map(h => h.id === id ? { ...h, name } : h));
     } catch (error) {
-      console.error('Error updating habit:', error);
+      logger.error('useHabits', 'failed to update habit:', error);
     }
   };
 
@@ -195,7 +185,7 @@ export function useHabits() {
       setHabits(prev => prev.filter(h => h.id !== id));
       setCompletions(prev => prev.filter(c => c.habit_id !== id));
     } catch (error) {
-      console.error('Error deleting habit:', error);
+      logger.error('useHabits', 'failed to delete habit:', error);
     }
   };
 
@@ -235,7 +225,7 @@ export function useHabits() {
         setCompletions(prev => [...prev, data]);
       }
     } catch (error) {
-      console.error('Error toggling completion:', error);
+      logger.error('useHabits', 'failed to toggle completion:', error);
     }
   };
 

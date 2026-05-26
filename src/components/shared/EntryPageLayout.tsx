@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useEffect, useId } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { WeatherData, Mood } from '@/types';
 import {
-  WeatherOverlay,
   deriveWeatherCategory,
   deriveTimeOfDay,
 } from '@/components/journal/weather-overlay';
+import { useFullscreenWeather } from '@/contexts/WeatherOverlayContext';
 import { moodLabels } from '@/constants/moods';
 import { formatEntryDate, formatEntryYear, formatEntryTime } from '@/utils/dateUtils';
 import { formatTemperature } from '@/utils/temperature';
@@ -59,6 +59,22 @@ const EntryPageLayout: React.FC<EntryPageLayoutProps> = ({
 
   const tempFormatter = formatTemp || ((celsius: number) => formatTemperature(celsius));
 
+  // Publish weather state into the single fullscreen overlay portal.
+  // Only one overlay is rendered globally (most-recent publisher wins),
+  // which prevents multiple ScrollEntry instances from stacking fixed overlays.
+  const overlayOwnerId = useId();
+  const { setOverlay } = useFullscreenWeather();
+  useEffect(() => {
+    if (weatherCategory && weatherEnabled) {
+      setOverlay(overlayOwnerId, { category: weatherCategory, timeOfDay });
+    } else {
+      setOverlay(overlayOwnerId, null);
+    }
+    return () => {
+      setOverlay(overlayOwnerId, null);
+    };
+  }, [overlayOwnerId, setOverlay, weatherCategory, weatherEnabled, timeOfDay]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -66,18 +82,6 @@ const EntryPageLayout: React.FC<EntryPageLayoutProps> = ({
       transition={{ duration: 0.5 }}
       className={cn("relative", className)}
     >
-      {/* Weather Overlay — fullscreen background */}
-      {weatherCategory && (
-        <WeatherOverlay
-          category={weatherCategory}
-          timeOfDay={timeOfDay}
-          isVisible={weatherEnabled}
-          opacity={weatherEnabled ? 1 : 0}
-          phase={weatherEnabled ? 'playing' : 'idle'}
-          fullscreen
-        />
-      )}
-
       {/* Page content */}
       <div className="relative z-10">
         {/* Actions — top right */}

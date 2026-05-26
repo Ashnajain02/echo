@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
-import { JournalEntry, Mood, JournalComment } from '@/types';
+import type { JournalEntry, Mood, JournalComment } from '@/types';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 import { encryptJournalEntry, decryptJournalEntry } from '@/utils/encryption';
 import { mapDbRowToJournalEntry, buildDbPayload } from '@/utils/journalEntryMapper';
 import { getLocalDate, getUtcTimestamp, getUserTimezone } from '@/utils/dateUtils';
+import { logger } from '@/lib/logger';
 
 interface JournalContextType {
   entries: JournalEntry[];
@@ -24,12 +25,6 @@ interface JournalContextType {
   deleteCommentFromEntry: (entryId: string, commentId: string) => Promise<void>;
   getRandomEntries: (count: number) => JournalEntry[];
   isLoading: boolean;
-  statsData: {
-    totalEntries: number;
-    moodCounts: Record<Mood, number>;
-    longestStreak: number;
-    mostCommonTime: string | null;
-  };
 }
 
 const JournalContext = createContext<JournalContextType | undefined>(undefined);
@@ -94,7 +89,7 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
           hasLoadedEntriesRef.current = true;
           currentUserIdRef.current = authState.user.id;
         } catch (error: unknown) {
-          console.error('Error loading journal entries:', error instanceof Error ? error.message : 'An unexpected error occurred');
+          logger.error('JournalContext', 'failed to load journal entries:', error);
         } finally {
           setIsLoading(false);
         }
@@ -104,65 +99,7 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
     fetchEntries();
   }, [authState.user?.id]);
   
-  const statsData = React.useMemo(() => {
-    const totalEntries = entries.length;
-    
-    const moodCounts: Record<Mood, number> = {
-      happy: 0, content: 0, neutral: 0, sad: 0, anxious: 0,
-      angry: 0, emotional: 0, 'in-love': 0, excited: 0, tired: 0
-    };
-    
-    entries.forEach(entry => {
-      if (entry.mood) {
-        moodCounts[entry.mood]++;
-      }
-    });
-    
-    // Calculate longest streak
-    const uniqueDates = [...new Set(entries.map(e => e.date))].sort();
-    let longestStreak = 0;
-    let currentStreak = 0;
-    let lastDate: Date | null = null;
-    
-    for (const dateStr of uniqueDates) {
-      const entryDate = new Date(dateStr);
-      
-      if (lastDate) {
-        const dayDiff = Math.floor((entryDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-        currentStreak = dayDiff === 1 ? currentStreak + 1 : 1;
-      } else {
-        currentStreak = 1;
-      }
-      
-      longestStreak = Math.max(longestStreak, currentStreak);
-      lastDate = entryDate;
-    }
-    
-    // Calculate most common time
-    const hourCounts: Record<number, number> = {};
-    entries.forEach(entry => {
-      if (entry.timestamp) {
-        const hour = new Date(entry.timestamp).getHours();
-        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
-      }
-    });
-    
-    let mostCommonHour = -1;
-    let maxCount = 0;
-    
-    Object.entries(hourCounts).forEach(([hour, count]) => {
-      if (count > maxCount) {
-        mostCommonHour = parseInt(hour);
-        maxCount = count;
-      }
-    });
-    
-    const mostCommonTime = mostCommonHour >= 0
-      ? `${mostCommonHour % 12 || 12}${mostCommonHour >= 12 ? 'PM' : 'AM'}`
-      : null;
-    
-    return { totalEntries, moodCounts, longestStreak, mostCommonTime };
-  }, [entries]);
+  const userId = authState.user?.id;
 
   const getRandomEntries = useCallback((count: number): JournalEntry[] => {
     const today = getLocalDate();
@@ -172,31 +109,25 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
     return shuffled.slice(0, Math.min(count, shuffled.length));
   }, [entries]);
 
-  const addEntry = async (entry: JournalEntry) => {
-    if (!authState.user) {
-      return;
-    }
-
-    // Entry is already in DB (inserted by publishDraft) - just update local state
+  const addEntry = useCallback(async (entry: JournalEntry) => {
+    if (!userId) return;
+    // Entry is already in DB (inserted by publishDraft) — just update local state.
     setEntries(prev => {
       const exists = prev.some(e => e.id === entry.id);
-      if (exists) {
-        return prev.map(e => e.id === entry.id ? entry : e);
-      }
-      return [entry, ...prev];
+      return exists
+        ? prev.map(e => e.id === entry.id ? entry : e)
+        : [entry, ...prev];
     });
-  };
-  
-  const updateEntry = async (updatedEntry: JournalEntry) => {
-    if (!authState.user) {
-      return;
-    }
+  }, [userId]);
+
+  const updateEntry = useCallback(async (updatedEntry: JournalEntry) => {
+    if (!userId) return;
 
     try {
       const now = new Date();
-      const encryptedEntry = await encryptJournalEntry(updatedEntry, authState.user.id);
+      const encryptedEntry = await encryptJournalEntry(updatedEntry, userId);
       const payload = buildDbPayload(updatedEntry, encryptedEntry.content);
-      
+
       const { error } = await supabase
         .from('journal_entries')
         .update({ ...payload, updated_at: now.toISOString() })
@@ -204,187 +135,166 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
 
       if (error) throw error;
 
-      const updatedEntryWithTimestamp = { ...updatedEntry, updatedAt: now.getTime() };
-      
-      setEntries(prev => prev.map(entry => 
-        entry.id === updatedEntry.id ? updatedEntryWithTimestamp : entry
-      ));
-
+      const withTimestamp = { ...updatedEntry, updatedAt: now.getTime() };
+      setEntries(prev => prev.map(e => e.id === updatedEntry.id ? withTimestamp : e));
     } catch (error: unknown) {
-      console.error('Error updating journal entry:', error);
+      logger.error('JournalContext', 'updateEntry failed:', error);
       throw error;
     }
-  };
+  }, [userId]);
 
-  const updateEntryContent = async (entryId: string, newContent: string) => {
-    if (!authState.user) {
-      throw new Error('Authentication required');
-    }
+  const updateEntryContent = useCallback(async (entryId: string, newContent: string) => {
+    if (!userId) throw new Error('Authentication required');
 
     const entryToUpdate = entries.find(e => e.id === entryId);
-    if (!entryToUpdate) {
-      throw new Error('Entry not found');
-    }
+    if (!entryToUpdate) throw new Error('Entry not found');
 
     try {
       const now = new Date();
       const updatedEntry: JournalEntry = { ...entryToUpdate, content: newContent };
-      const encryptedEntry = await encryptJournalEntry(updatedEntry, authState.user.id);
-      
+      const encryptedEntry = await encryptJournalEntry(updatedEntry, userId);
+
       const { error } = await supabase
         .from('journal_entries')
         .update({
           entry_text: encryptedEntry.content,
-          updated_at: now.toISOString()
+          updated_at: now.toISOString(),
         })
         .eq('id', entryId);
 
       if (error) throw error;
 
-      setEntries(prev => prev.map(entry => 
-        entry.id === entryId ? { ...entry, content: newContent, updatedAt: now.getTime() } : entry
+      setEntries(prev => prev.map(e =>
+        e.id === entryId ? { ...e, content: newContent, updatedAt: now.getTime() } : e,
       ));
     } catch (error: unknown) {
-      console.error('Error updating entry content:', error);
+      logger.error('JournalContext', 'updateEntryContent failed:', error);
       throw error;
     }
-  };
-  
-  const deleteEntry = async (id: string) => {
-    if (!authState.user) {
-      return;
-    }
+  }, [entries, userId]);
+
+  const deleteEntry = useCallback(async (id: string) => {
+    if (!userId) return;
 
     try {
-      const { error } = await supabase
-        .from('journal_entries')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('journal_entries').delete().eq('id', id);
       if (error) throw error;
-
-      setEntries(prev => prev.filter(entry => entry.id !== id));
+      setEntries(prev => prev.filter(e => e.id !== id));
     } catch (error: unknown) {
-      console.error('Error deleting journal entry:', error);
+      logger.error('JournalContext', 'deleteEntry failed:', error);
       throw error;
     }
-  };
-  
-  const getEntryById = (id: string) => entries.find(entry => entry.id === id);
-  const getEntriesByDate = (date: string) => entries.filter(entry => entry.date === date);
-  const getEntriesByMood = (mood: Mood) => entries.filter(entry => entry.mood === mood);
-  
-  const searchEntries = (query: string) => {
+  }, [userId]);
+
+  const getEntryById = useCallback(
+    (id: string) => entries.find(e => e.id === id),
+    [entries],
+  );
+  const getEntriesByDate = useCallback(
+    (date: string) => entries.filter(e => e.date === date),
+    [entries],
+  );
+  const getEntriesByMood = useCallback(
+    (mood: Mood) => entries.filter(e => e.mood === mood),
+    [entries],
+  );
+
+  const searchEntries = useCallback((query: string) => {
     const lowercaseQuery = query.toLowerCase();
-    return entries.filter(entry => 
-      entry.content.toLowerCase().includes(lowercaseQuery) ||
-      entry.weather?.location?.toLowerCase().includes(lowercaseQuery) ||
-      entry.track?.name?.toLowerCase().includes(lowercaseQuery) ||
-      entry.track?.artist?.toLowerCase().includes(lowercaseQuery)
+    return entries.filter(e =>
+      e.content.toLowerCase().includes(lowercaseQuery) ||
+      e.weather?.location?.toLowerCase().includes(lowercaseQuery) ||
+      e.track?.name?.toLowerCase().includes(lowercaseQuery) ||
+      e.track?.artist?.toLowerCase().includes(lowercaseQuery),
     );
-  };
-  
-  const addCommentToEntry = async (entryId: string, content: string) => {
-    if (!authState.user) {
-      return;
-    }
+  }, [entries]);
+
+  const addCommentToEntry = useCallback(async (entryId: string, content: string) => {
+    if (!userId) return;
 
     const entryToUpdate = entries.find(e => e.id === entryId);
-    if (!entryToUpdate) {
-      throw new Error("Entry not found");
-    }
+    if (!entryToUpdate) throw new Error('Entry not found');
 
     try {
       const now = new Date();
       const newComment: JournalComment = {
         id: `comment-${Date.now()}`,
         content,
-        createdAt: now.getTime()
+        createdAt: now.getTime(),
       };
 
       const updatedEntry: JournalEntry = {
         ...entryToUpdate,
-        comments: [...(entryToUpdate.comments || []), newComment]
+        comments: [...(entryToUpdate.comments || []), newComment],
       };
 
-      const encryptedEntry = await encryptJournalEntry(updatedEntry, authState.user.id);
-      
+      const encryptedEntry = await encryptJournalEntry(updatedEntry, userId);
+
       const { error } = await supabase
         .from('journal_entries')
         .update({
           entry_text: encryptedEntry.content,
-          updated_at: now.toISOString()
+          updated_at: now.toISOString(),
         })
         .eq('id', entryId);
 
       if (error) throw error;
 
-      setEntries(prev => prev.map(entry => 
-        entry.id === entryId ? {
-          ...entry,
-          comments: [...(entry.comments || []), newComment],
-          updatedAt: now.getTime()
-        } : entry
+      setEntries(prev => prev.map(e =>
+        e.id === entryId
+          ? { ...e, comments: [...(e.comments || []), newComment], updatedAt: now.getTime() }
+          : e,
       ));
-
     } catch (error: unknown) {
-      console.error('Error adding comment:', error);
+      logger.error('JournalContext', 'addCommentToEntry failed:', error);
       throw error;
     }
-  };
-  
-  const deleteCommentFromEntry = async (entryId: string, commentId: string) => {
-    if (!authState.user) {
-      return;
-    }
+  }, [entries, userId]);
+
+  const deleteCommentFromEntry = useCallback(async (entryId: string, commentId: string) => {
+    if (!userId) return;
 
     const entryToUpdate = entries.find(e => e.id === entryId);
-    if (!entryToUpdate) {
-      throw new Error("Entry not found");
-    }
+    if (!entryToUpdate) throw new Error('Entry not found');
 
     try {
       const updatedComments = (entryToUpdate.comments || []).filter(c => c.id !== commentId);
       const updatedEntry: JournalEntry = { ...entryToUpdate, comments: updatedComments };
+      const encryptedEntry = await encryptJournalEntry(updatedEntry, userId);
 
-      const encryptedEntry = await encryptJournalEntry(updatedEntry, authState.user.id);
-      
       const now = new Date();
       const { error } = await supabase
         .from('journal_entries')
         .update({
           entry_text: encryptedEntry.content,
-          updated_at: now.toISOString()
+          updated_at: now.toISOString(),
         })
         .eq('id', entryId);
 
       if (error) throw error;
 
-      setEntries(prev => prev.map(entry => 
-        entry.id === entryId ? { ...entry, comments: updatedComments, updatedAt: now.getTime() } : entry
+      setEntries(prev => prev.map(e =>
+        e.id === entryId
+          ? { ...e, comments: updatedComments, updatedAt: now.getTime() }
+          : e,
       ));
-
     } catch (error: unknown) {
-      console.error('Error deleting comment:', error);
+      logger.error('JournalContext', 'deleteCommentFromEntry failed:', error);
       throw error;
     }
-  };
-  
-  const createNewEntry = (date?: string) => {
-    const newEntry: JournalEntry = {
-      id: `temp-${Date.now()}`,
-      content: '',
-      date: date || getLocalDate(),
-      timestamp: getUtcTimestamp(),
-      timezone: getUserTimezone(),
-      mood: 'neutral',
-      createdAt: Date.now(),
-      comments: []
-    };
+  }, [entries, userId]);
 
-    return newEntry;
-  };
-  
+  const createNewEntry = useCallback((date?: string): JournalEntry => ({
+    id: `temp-${Date.now()}`,
+    content: '',
+    date: date || getLocalDate(),
+    timestamp: getUtcTimestamp(),
+    timezone: getUserTimezone(),
+    mood: 'neutral',
+    createdAt: Date.now(),
+    comments: [],
+  }), []);
+
   const value = React.useMemo(() => ({
     entries,
     currentEntry,
@@ -402,8 +312,23 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
     deleteCommentFromEntry,
     getRandomEntries,
     isLoading,
-    statsData
-  }), [entries, currentEntry, isLoading, statsData]);
+  }), [
+    entries,
+    currentEntry,
+    isLoading,
+    addEntry,
+    updateEntry,
+    updateEntryContent,
+    deleteEntry,
+    getEntryById,
+    getEntriesByDate,
+    getEntriesByMood,
+    createNewEntry,
+    searchEntries,
+    addCommentToEntry,
+    deleteCommentFromEntry,
+    getRandomEntries,
+  ]);
 
   return (
     <JournalContext.Provider value={value}>

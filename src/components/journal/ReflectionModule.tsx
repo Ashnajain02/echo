@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 
 import { supabase } from '@/integrations/supabase/client';
 import { generateReflectionQuestions } from '@/services/api';
+import { useIsDemoMode } from '@/contexts/DemoModeContext';
+import { logger } from '@/lib/logger';
 import ReflectionQuestion from './reflection/ReflectionQuestion';
 import ReflectionEditor from './reflection/ReflectionEditor';
 import ReflectionDisplay from './reflection/ReflectionDisplay';
@@ -16,7 +18,6 @@ interface ReflectionModuleProps {
   reflectionQuestion: string | null;
   reflectionAnswer: string | null;
   onReflectionUpdate: () => void;
-  demo?: boolean;
 }
 
 const ReflectionModule: React.FC<ReflectionModuleProps> = ({
@@ -27,8 +28,8 @@ const ReflectionModule: React.FC<ReflectionModuleProps> = ({
   reflectionQuestion,
   reflectionAnswer,
   onReflectionUpdate,
-  demo = false
 }) => {
+  const demo = useIsDemoMode();
   const [isLoading, setIsLoading] = useState(false);
   const [questions, setQuestions] = useState<string[]>(reflectionQuestion ? [reflectionQuestion] : []);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -55,7 +56,7 @@ const ReflectionModule: React.FC<ReflectionModuleProps> = ({
       setShowModule(true);
       setIsEditing(true);
     } catch (error) {
-      console.error('Error generating reflection questions:', error);
+      logger.error('ReflectionModule', 'failed to generate reflection questions:', error);
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +91,7 @@ const ReflectionModule: React.FC<ReflectionModuleProps> = ({
       setIsEditing(false);
       onReflectionUpdate();
     } catch (error) {
-      console.error('Error saving reflection:', error);
+      logger.error('ReflectionModule', 'failed to save reflection:', error);
     } finally {
       setIsLoading(false);
     }
@@ -118,7 +119,7 @@ const ReflectionModule: React.FC<ReflectionModuleProps> = ({
       setShowModule(false);
       onReflectionUpdate();
     } catch (error) {
-      console.error('Error deleting reflection:', error);
+      logger.error('ReflectionModule', 'failed to delete reflection:', error);
     } finally {
       setIsLoading(false);
     }
