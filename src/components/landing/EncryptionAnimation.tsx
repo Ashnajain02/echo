@@ -73,6 +73,17 @@ function buildTextPositions(): { x: number; y: number }[] {
 const textPositions = buildTextPositions();
 const lockPositions = buildLockPoints(ALL_CHARS.length);
 
+// Layout constants tuned to remove the dead-scroll trail after the animation:
+//   - The sticky surface is sized to fit the letter + tagline content tightly,
+//     so when it eventually slides out of view there's no large empty centered
+//     band to scroll through.
+//   - The outer wrapper is just tall enough to give the sticky a comfortable
+//     pin window for the animation to play (OUTER_VH - STICKY_VH = pin travel),
+//     then the next section follows immediately.
+const STICKY_VH = 60;
+const OUTER_VH = 100;
+const PIN_TRAVEL_VH = OUTER_VH - STICKY_VH; // = animation scroll duration
+
 const EncryptionAnimation: React.FC = () => {
   const outerRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
@@ -82,12 +93,12 @@ const EncryptionAnimation: React.FC = () => {
       const el = outerRef.current;
       if (!el) return;
 
-      const rect = el.getBoundingClientRect();
-      // The outer div is 200vh tall. The sticky inner stays fixed for 100vh of scrolling.
-      // Progress = how far through that 100vh of scroll travel we are.
-      const scrollableDistance = rect.height - window.innerHeight;
-      const scrolled = -rect.top;
-      const t = scrolled / scrollableDistance;
+      // Pin travel in pixels = how far the user can scroll while the sticky is
+      // still pinned. Progress runs 0 → 1 across that range.
+      const pinTravelPx = window.innerHeight * (PIN_TRAVEL_VH / 100);
+      if (pinTravelPx <= 0) return;
+      const scrolled = -el.getBoundingClientRect().top;
+      const t = scrolled / pinTravelPx;
       setProgress(Math.max(0, Math.min(1, t)));
     };
 
@@ -102,8 +113,11 @@ const EncryptionAnimation: React.FC = () => {
     : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
   return (
-    <div ref={outerRef} style={{ height: '180vh' }} className="relative">
-      <div className="sticky top-0 h-screen flex flex-col items-center justify-center px-6">
+    <div ref={outerRef} style={{ height: `${OUTER_VH}vh` }} className="relative">
+      <div
+        className="sticky top-0 flex flex-col items-center justify-center px-6"
+        style={{ height: `${STICKY_VH}vh` }}
+      >
         <div className="relative w-full max-w-2xl mx-auto" style={{ height: '320px' }}>
           {ALL_CHARS.map((c, i) => {
             const tp = textPositions[i] || { x: 0.5, y: 0.5 };

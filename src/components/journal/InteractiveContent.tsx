@@ -10,6 +10,17 @@ interface InteractiveContentProps {
 }
 
 /**
+ * Single source of truth for the editorial typography applied to a journal
+ * entry's body text. Reused by:
+ *   - <InteractiveContent>  — read mode
+ *   - <RichTextEditor>      — edit mode (via editorProps.attributes.class)
+ *
+ * Keep this in one place so reading and editing the same entry render
+ * identically and the landing-page demo matches a signed-in user's view.
+ */
+export const ENTRY_PROSE_CLASS = 'text-[1.1rem] leading-[1.9] text-foreground/90';
+
+/**
  * Renders journal entry content with interactive checkboxes.
  * When a checkbox is toggled, it updates the content HTML and calls onContentChange.
  */
@@ -87,8 +98,9 @@ const InteractiveContent: React.FC<InteractiveContentProps> = ({
     <div
       ref={containerRef}
       className={cn(
-        "prose prose-sm max-w-none text-foreground interactive-content",
-        className
+        'interactive-content max-w-none',
+        ENTRY_PROSE_CLASS,
+        className,
       )}
       dangerouslySetInnerHTML={{ __html: content }}
     />

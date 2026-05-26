@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Bold, Italic, Underline as UnderlineIcon, ImagePlus, List, ListOrdered, CheckSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { ENTRY_PROSE_CLASS } from './InteractiveContent';
 
 
 interface RichTextEditorProps {
@@ -79,7 +80,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[200px] text-foreground',
+        class: cn('max-w-none focus:outline-none min-h-[200px]', ENTRY_PROSE_CLASS),
       },
     },
   });

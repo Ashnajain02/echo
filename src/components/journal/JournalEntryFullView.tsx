@@ -103,7 +103,6 @@ const JournalEntryFullView: React.FC<JournalEntryFullViewProps> = ({
         <div
           ref={state.contentRef}
           data-entry-content
-          className="text-[1.1rem] leading-[1.9] text-foreground/90"
           style={blurStyle}
         >
           <InteractiveContent

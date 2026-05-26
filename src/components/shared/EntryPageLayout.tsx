@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { WeatherData, Mood } from '@/types';
@@ -59,41 +59,26 @@ const EntryPageLayout: React.FC<EntryPageLayoutProps> = ({
 
   const tempFormatter = formatTemp || ((celsius: number) => formatTemperature(celsius));
 
-  // Track whether this entry's page surface is currently visible. We can't
-  // reuse `weatherEnabled` for this — it's intentionally one-way (see
-  // useEntryState / LandingEntry) so the user toggle persists when the
-  // notes section expands. Without an independent visibility signal, every
-  // entry the user scrolls past stays a publisher and the most-recent one
-  // gets stuck on screen after scrolling back up.
+  // Register this entry with the fullscreen overlay portal. The portal owns
+  // a single shared IntersectionObserver and picks whichever registered
+  // entry has the most visible area as the focal one. We just declare
+  // "here's my surface and here's my weather" — visibility tracking and
+  // tie-breaking live in the context, not here.
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isInView, setIsInView] = useState(false);
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsInView(entry.isIntersecting),
-      { threshold: 0.4 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // Publish weather state into the single fullscreen overlay portal.
-  // Only one overlay is rendered globally (most-recent publisher wins),
-  // which prevents multiple ScrollEntry instances from stacking fixed overlays.
-  // Gated on `isInView` so off-screen entries don't linger as publishers.
   const overlayOwnerId = useId();
-  const { setOverlay } = useFullscreenWeather();
+  const { setEntry } = useFullscreenWeather();
   useEffect(() => {
-    if (weatherCategory && weatherEnabled && isInView) {
-      setOverlay(overlayOwnerId, { category: weatherCategory, timeOfDay });
-    } else {
-      setOverlay(overlayOwnerId, null);
+    const element = containerRef.current;
+    if (!element || !weatherCategory || !weatherEnabled) {
+      setEntry(overlayOwnerId, null);
+      return;
     }
-    return () => {
-      setOverlay(overlayOwnerId, null);
-    };
-  }, [overlayOwnerId, setOverlay, weatherCategory, weatherEnabled, timeOfDay, isInView]);
+    setEntry(overlayOwnerId, {
+      element,
+      weather: { category: weatherCategory, timeOfDay },
+    });
+    return () => setEntry(overlayOwnerId, null);
+  }, [overlayOwnerId, setEntry, weatherCategory, weatherEnabled, timeOfDay]);
 
   return (
     <motion.div

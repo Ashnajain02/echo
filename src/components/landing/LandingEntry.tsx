@@ -102,9 +102,7 @@ const LandingEntry: React.FC<LandingEntryProps> = ({ entry }) => {
           )}
 
           {/* Content */}
-          <div className="text-[1.1rem] leading-[1.9] text-foreground/90">
-            <InteractiveContent content={entry.content} disabled />
-          </div>
+          <InteractiveContent content={entry.content} disabled />
         </EntryPageLayout>
       </div>
     </div>

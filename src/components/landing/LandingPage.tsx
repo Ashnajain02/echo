@@ -90,7 +90,7 @@ const LandingPage: React.FC = () => {
       <EncryptionAnimation />
 
       {/* Final CTA */}
-      <section className="py-32 text-center px-6">
+      <section className="py-12 text-center px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
