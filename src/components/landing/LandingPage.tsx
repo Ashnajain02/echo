@@ -68,15 +68,15 @@ const LandingPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 1.2 }}
-          className="absolute bottom-10 flex flex-col items-center gap-1"
+          transition={{ duration: 0.4 }}
+          className="absolute bottom-10 flex flex-col items-center gap-1.5"
         >
-          <span className="text-xs tracking-widest uppercase text-muted-foreground/40">Scroll to explore</span>
+          <span className="text-xs tracking-widest uppercase text-foreground/60 font-medium">Scroll to explore</span>
           <motion.div
             animate={{ y: [0, 6, 0] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <ChevronDown className="h-5 w-5 text-muted-foreground/30" />
+            <ChevronDown className="h-6 w-6 text-foreground/50" />
           </motion.div>
         </motion.div>
       </section>

@@ -61,19 +61,19 @@ export const landingEntries: JournalEntry[] = [
     reflectionQuestion: 'What moment from your past would you most want to revisit?',
     reflectionAnswer: 'The morning I woke up with nowhere to be, sunlight through the curtains, and nowhere I wanted to go. I didn\'t know it was special then. I do now.',
   },
-  // Entry 3 — Clear sky evening, happy mood (orange sun glow)
+  // Entry 3 — Clear night sky, happy mood (stars + shooting stars)
   {
     id: 'landing-3',
     date: '2026-03-08',
-    timestamp: '2026-03-08T23:00:00.000Z',
+    timestamp: '2026-03-09T05:00:00.000Z',
     mood: 'happy',
     content: `<p><strong>Search for any song</strong> and it becomes part of your entry.</p>
 <p>A 30-second clip plays right here — not a link, not a redirect. The <strong>music is woven into the memory</strong>. When you come back to read this entry, the song plays and suddenly you're back in that exact moment.</p>
 <p><strong>Try pressing play.</strong> You'll see what we mean.</p>`,
     weather: {
-      temperature: 22,
+      temperature: 15,
       description: 'clear sky',
-      icon: 'thermometer-sun',
+      icon: 'moon',
       location: 'Los Angeles, California',
     },
     track: {

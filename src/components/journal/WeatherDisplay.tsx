@@ -11,6 +11,7 @@ import {
   RefreshCw,
   MapPin,
   Sun,
+  Moon,
   Snowflake,
   CloudLightning
 } from 'lucide-react';
@@ -31,6 +32,7 @@ const WEATHER_ICONS: Record<string, React.ReactNode> = {
   'cloud-sun': <CloudSun className={ICON_CLASS} />,
   'cloud-rain': <CloudRain className={ICON_CLASS} />,
   'thermometer-sun': <Sun className={ICON_CLASS} />,
+  'moon': <Moon className={ICON_CLASS} />,
   'thermometer-snowflake': <Snowflake className={ICON_CLASS} />,
   'droplet': <Droplet className={ICON_CLASS} />,
   'cloud-moon-rain': <CloudMoonRain className={ICON_CLASS} />,
