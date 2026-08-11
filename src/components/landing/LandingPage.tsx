@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import LandingEntry from './LandingEntry';
+import OnThisDayShowcase from './OnThisDayShowcase';
+import MusicWaveformShowcase from './MusicWaveformShowcase';
 import EncryptionAnimation from './EncryptionAnimation';
 import ContactSection from './ContactSection';
 import { landingEntries } from '@/data/landingEntries';
@@ -81,8 +83,14 @@ const LandingPage: React.FC = () => {
         </motion.div>
       </section>
 
-      {/* Demo entries — vertical scroll, each roughly full viewport */}
-      {landingEntries.map((entry) => (
+      {/* Demo entries — vertical scroll, each roughly full viewport.
+          Only the first is a realistic journal entry; the rest of the
+          features get their own bespoke showcase (see OnThisDayShowcase,
+          EncryptionAnimation below) rather than pretending to be entries. */}
+      <LandingEntry entry={landingEntries[0]} />
+      <OnThisDayShowcase />
+      <MusicWaveformShowcase />
+      {landingEntries.slice(1).map((entry) => (
         <LandingEntry key={entry.id} entry={entry} />
       ))}
 

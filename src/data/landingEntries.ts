@@ -30,66 +30,6 @@ export const landingEntries: JournalEntry[] = [
     createdAt: new Date('2025-11-14T09:22:00.000Z').getTime(),
     comments: [],
   },
-  // Entry 2 — Clear sky evening, emotional mood (sun glow)
-  {
-    id: 'landing-2',
-    date: '2025-06-21',
-    timestamp: '2025-06-22T00:30:00.000Z',
-    mood: 'emotional',
-    content: `<p><strong>Every entry is a moment frozen in time.</strong></p>
-<p>Come back a week later, a month later, a year later — and <strong>rediscover what you were feeling</strong>, what you were listening to, what the sky looked like. Your future self will read these words and feel something you forgot you felt.</p>
-<p>That's the magic. Not in the writing — <strong>in the revisiting</strong>.</p>`,
-    weather: {
-      temperature: 20,
-      description: 'clear sky',
-      icon: 'thermometer-sun',
-      location: 'New York, New York',
-    },
-    track: {
-      id: '1739659142',
-      name: 'BIRDS OF A FEATHER',
-      artist: 'Billie Eilish',
-      album: 'HIT ME HARD AND SOFT',
-      albumArt: 'https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/92/9f/69/929f69f1-9977-3a44-d674-11f70c852d1b/24UMGIM36186.rgb.jpg/300x300bb.jpg',
-      uri: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/34/31/d3/3431d34e-847f-5d66-df83-0bce688d997e/mzaf_18106743962423782018.plus.aac.p.m4a',
-      durationMs: 210373,
-      clipStartSeconds: 0,
-      clipEndSeconds: 30,
-    },
-    createdAt: new Date('2025-06-21T22:45:00.000Z').getTime(),
-    comments: [],
-    reflectionQuestion: 'What moment from your past would you most want to revisit?',
-    reflectionAnswer: 'The morning I woke up with nowhere to be, sunlight through the curtains, and nowhere I wanted to go. I didn\'t know it was special then. I do now.',
-  },
-  // Entry 3 — Clear night sky, happy mood (stars + shooting stars)
-  {
-    id: 'landing-3',
-    date: '2026-03-08',
-    timestamp: '2026-03-09T05:00:00.000Z',
-    mood: 'happy',
-    content: `<p><strong>Search for any song</strong> and it becomes part of your entry.</p>
-<p>A 30-second clip plays right here — not a link, not a redirect. The <strong>music is woven into the memory</strong>. When you come back to read this entry, the song plays and suddenly you're back in that exact moment.</p>
-<p><strong>Try pressing play.</strong> You'll see what we mean.</p>`,
-    weather: {
-      temperature: 15,
-      description: 'clear sky',
-      icon: 'moon',
-      location: 'Los Angeles, California',
-    },
-    track: {
-      id: '900672692',
-      name: 'Like Real People Do',
-      artist: 'Hozier',
-      album: 'Hozier (Expanded Edition)',
-      albumArt: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/5e/1b/f1/5e1bf1de-e5f1-e73e-0752-e7882b4f2d57/886444718820.jpg/300x300bb.jpg',
-      uri: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/fc/ac/c7/fcacc74c-0af0-96c2-5242-413edf274c8c/mzaf_13137692970460201319.plus.aac.p.m4a',
-      durationMs: 198029,
-      clipStartSeconds: 0,
-      clipEndSeconds: 30,
-    },
-    createdAt: new Date('2026-03-08T21:30:00.000Z').getTime(),
-    comments: [],
-  },
   // Entry 4 — Heavy clouds, neutral mood (transitions to encryption)
   {
     id: 'landing-4',

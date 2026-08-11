@@ -27,6 +27,7 @@ export default {
       fontFamily: {
         display: ['Cormorant Garamond', 'Georgia', 'serif'],
         body: ['Inter', 'system-ui', 'sans-serif'],
+        script: ['Caveat', 'cursive'],
       },
       colors: {
         border: 'hsl(var(--border))',
