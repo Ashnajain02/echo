@@ -30,33 +30,4 @@ export const landingEntries: JournalEntry[] = [
     createdAt: new Date('2025-11-14T09:22:00.000Z').getTime(),
     comments: [],
   },
-  // Entry 4 — Heavy clouds, neutral mood (transitions to encryption)
-  {
-    id: 'landing-4',
-    date: '2026-01-03',
-    timestamp: '2026-01-03T18:00:00.000Z',
-    mood: 'neutral',
-    content: `<p><strong>Your entries are encrypted</strong> before they leave your device.</p>
-<p>We use <strong>AES-256 encryption</strong> — the same standard used by banks and governments. Your thoughts are scrambled into unreadable data before they're ever stored. <strong>Not even we can read them.</strong></p>
-<p>No ads. No data mining. <strong>No one reading over your shoulder.</strong> This is your journal, and it stays that way.</p>`,
-    weather: {
-      temperature: 8,
-      description: 'heavy clouds',
-      icon: 'cloud',
-      location: 'London, England',
-    },
-    track: {
-      id: '1122782281',
-      name: 'Sparks',
-      artist: 'Coldplay',
-      album: 'Parachutes',
-      albumArt: 'https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/f5/93/8c/f5938c49-964c-31d1-4b33-78b634f71fb7/190295978075.jpg/300x300bb.jpg',
-      uri: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/47/db/ce/47dbce82-d89c-0897-0da7-26d06ae7e2f2/mzaf_14852507599380441353.plus.aac.p.m4a',
-      durationMs: 227094,
-      clipStartSeconds: 0,
-      clipEndSeconds: 30,
-    },
-    createdAt: new Date('2026-01-03T18:30:00.000Z').getTime(),
-    comments: [],
-  },
 ];

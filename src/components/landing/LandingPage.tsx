@@ -84,17 +84,16 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Demo entries — vertical scroll, each roughly full viewport.
-          Only the first is a realistic journal entry; the rest of the
-          features get their own bespoke showcase (see OnThisDayShowcase,
-          EncryptionAnimation below) rather than pretending to be entries. */}
+          Only the first is a realistic journal entry; every other feature
+          gets its own bespoke showcase (OnThisDayShowcase,
+          MusicWaveformShowcase, EncryptionAnimation) rather than pretending
+          to be an entry. */}
       <LandingEntry entry={landingEntries[0]} />
       <OnThisDayShowcase />
       <MusicWaveformShowcase />
-      {landingEntries.slice(1).map((entry) => (
-        <LandingEntry key={entry.id} entry={entry} />
-      ))}
 
-      {/* Encryption animation */}
+      {/* Encryption animation — "Your thoughts are always protected" already
+          demonstrates encryption on its own; no separate mock entry needed. */}
       <EncryptionAnimation />
 
       {/* Final CTA */}

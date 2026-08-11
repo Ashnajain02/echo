@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Music2 } from 'lucide-react';
+import { Music2, Volume2, VolumeX } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { noteForIndex, playNote, unlockAudio } from '@/utils/noteSynth';
 
 // The phrase the waveform resolves into — written like a line from an entry,
 // not a marketing tagline. Punctuation-free, matching how EncryptionAnimation
@@ -115,11 +116,15 @@ const CANVAS_HEIGHT = 260;
  * EncryptionAnimation / OnThisDayShowcase): scroll down to play it forward,
  * scroll up and it unwinds exactly in reverse.
  */
+const NOTE_TRIGGER_THRESHOLD = 0.5;
+
 const MusicWaveformShowcase: React.FC = () => {
   const outerRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const isMobile = useIsMobile();
   const chars = useMemo(() => buildChars(isMobile), [isMobile]);
+  const prevCharProgressRef = useRef<number[]>([]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -145,6 +150,33 @@ const MusicWaveformShowcase: React.FC = () => {
     });
   }, [progress, chars]);
 
+  // Play a note the instant a letter crosses the "resolved" threshold while
+  // scrolling forward — never on the way back up, so rewinding stays silent
+  // even though the visual fully unwinds. Comparing against the previous
+  // frame's values (rather than tracking a "has played" flag) means scrolling
+  // down past a letter again later naturally replays its note too.
+  useEffect(() => {
+    const prev = prevCharProgressRef.current;
+    if (soundEnabled) {
+      charProgress.forEach((t, i) => {
+        const prevT = prev[i] ?? 0;
+        if (prevT < NOTE_TRIGGER_THRESHOLD && t >= NOTE_TRIGGER_THRESHOLD) {
+          playNote(noteForIndex(i));
+        }
+      });
+    }
+    prevCharProgressRef.current = charProgress;
+  }, [charProgress, soundEnabled]);
+
+  const handleToggleSound = () => {
+    if (!soundEnabled) {
+      // Must be called synchronously inside this click handler — this is the
+      // user gesture browsers require before they'll let audio play at all.
+      unlockAudio();
+    }
+    setSoundEnabled((prev) => !prev);
+  };
+
   const outroT = remap(progress, OUTRO_START, OUTRO_END);
 
   return (
@@ -168,6 +200,16 @@ const MusicWaveformShowcase: React.FC = () => {
               <h2 className="font-display text-4xl md:text-5xl font-normal text-foreground tracking-tight leading-tight">
                 Sound becomes memory.
               </h2>
+
+              <button
+                type="button"
+                onClick={handleToggleSound}
+                aria-pressed={soundEnabled}
+                className="mt-5 inline-flex items-center gap-2 rounded-full border border-border px-4 py-1.5 text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/30"
+              >
+                {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                {soundEnabled ? 'Sound on' : 'Turn on sound'}
+              </button>
             </motion.div>
 
             {/* Waveform → words canvas */}
