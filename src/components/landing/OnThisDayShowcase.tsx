@@ -119,7 +119,7 @@ const OnThisDayShowcase: React.FC = () => {
 
             <div className="relative pl-10 max-w-xl mx-auto w-full">
               <div
-                className="absolute left-[3px] top-2 bottom-2 w-px bg-border origin-top"
+                className="absolute left-[6.5px] top-2 bottom-2 w-px bg-border origin-top"
                 style={{ transform: `scaleY(${railT})` }}
               />
 
