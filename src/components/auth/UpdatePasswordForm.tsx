@@ -65,22 +65,22 @@ export const UpdatePasswordForm: React.FC<UpdatePasswordFormProps> = ({
   return (
     <>
       {updateSuccess ? (
-        <Alert className="mb-4 bg-green-50 border-green-200">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-700">
+        <Alert variant="success" className="mb-4">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>
             Your password has been updated successfully! You will be redirected to sign in.
           </AlertDescription>
         </Alert>
       ) : (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-start gap-2">
-          <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-blue-700">
-            {recoveryToken ? 
-              "Please enter your new password below." : 
+        <Alert variant="info" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {recoveryToken ?
+              "Please enter your new password below." :
               "Enter your new password below."
             }
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
       
       <Form {...form}>

@@ -64,6 +64,22 @@ export function formatEntryYear(dateValue: string | number): string {
 }
 
 /**
+ * Day of week only, e.g. "Friday". Used as the small eyebrow above the
+ * entry header's date hero.
+ */
+export function formatEntryDayName(dateValue: string | number): string {
+  return fnsFormat(parseDate(dateValue), 'EEEE');
+}
+
+/**
+ * Month, day and year together, e.g. "November 14, 2025" — the entry
+ * header's date hero (day-of-week is shown separately, see formatEntryDayName).
+ */
+export function formatEntryDateWithYear(dateValue: string | number): string {
+  return fnsFormat(parseDate(dateValue), 'MMMM d, yyyy');
+}
+
+/**
  * Format time with timezone abbreviation. Used everywhere time is displayed.
  */
 function formatTimeWithTz(dateValue: string | number): string {

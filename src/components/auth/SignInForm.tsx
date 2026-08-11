@@ -96,7 +96,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onForgotPassword }) => {
             <Button
               type="button"
               variant="link"
-              className="text-sm text-blue-500 hover:text-blue-700"
+              className="text-sm text-primary hover:text-primary/80"
               onClick={onForgotPassword}
             >
               Forgot password?

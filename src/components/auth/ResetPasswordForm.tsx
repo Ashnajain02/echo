@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const resetPasswordSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -45,12 +46,12 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ onBackToSi
 
   return (
     <>
-      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-start gap-2">
-        <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-        <p className="text-sm text-yellow-700">
+      <Alert variant="info" className="mb-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
           Enter your email address and we'll send you a link to reset your password.
-        </p>
-      </div>
+        </AlertDescription>
+      </Alert>
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleResetPassword)} className="space-y-4">

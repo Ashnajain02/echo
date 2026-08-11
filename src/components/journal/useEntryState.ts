@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
 interface UserPreferences {
   temperature_unit: TemperatureUnit | null;
   disable_song_blur: boolean | null;
+  disable_weather_effects: boolean | null;
 }
 
 interface UseEntryStateOptions {
@@ -40,20 +41,22 @@ export function useEntryState({ entry, isPreview, initialWeatherEnabled }: UseEn
 
   const [isEditing, setIsEditing] = useState(false);
   const [hasClickedToPlay, setHasClickedToPlay] = useState(false);
-  const [weatherEnabled, setWeatherEnabled] = useState(initialWeatherEnabled ?? true);
+  const [hasBeenInView, setHasBeenInView] = useState(initialWeatherEnabled ?? true);
   const [localContent, setLocalContent] = useState(entry.content);
 
   const contentRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(entry.content);
 
-  // Auto-enable weather when the parent observer reports the entry is in view.
+  // Latch weather on once the parent observer reports the entry is in view.
   // Intentionally one-way: scrolling out (or expanding the Notes section, which
-  // shrinks the intersection ratio) MUST NOT auto-disable. Toggling off is the
-  // user's job via the "Weather on/off" button.
+  // shrinks the intersection ratio) MUST NOT un-latch it — whether it's
+  // actually shown right now is still gated by the account-wide preference
+  // below (see `weatherEnabled`) and, for which entry is focal, by
+  // WeatherOverlayContext's own visibility tracking.
   useEffect(() => {
     if (initialWeatherEnabled === true) {
-      setWeatherEnabled(true);
+      setHasBeenInView(true);
     }
   }, [initialWeatherEnabled]);
 
@@ -91,15 +94,16 @@ export function useEntryState({ entry, isPreview, initialWeatherEnabled }: UseEn
     }, 300);
   }, [entry.id, updateEntryContent]);
 
-  // User preferences (temperature unit + blur preference). React Query handles
-  // caching + dedupe across multiple entry cards on the same page.
+  // User preferences (temperature unit, blur preference, weather effects).
+  // React Query handles caching + dedupe across multiple entry cards on the
+  // same page.
   const { data: userProfile } = useQuery<UserPreferences | null>({
     queryKey: ['user-profile-settings', authState.user?.id],
     queryFn: async () => {
       if (!authState.user) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('temperature_unit, disable_song_blur')
+        .select('temperature_unit, disable_song_blur, disable_weather_effects')
         .eq('id', authState.user.id)
         .single();
       if (error) {
@@ -115,6 +119,13 @@ export function useEntryState({ entry, isPreview, initialWeatherEnabled }: UseEn
     if (userProfile?.disable_song_blur) return false;
     return Boolean(entry.track && !hasClickedToPlay);
   }, [userProfile?.disable_song_blur, entry.track, hasClickedToPlay]);
+
+  // Weather is shown once the entry has been scrolled into view at least
+  // once (see the latch above), gated by the account-wide "Show weather
+  // effects" setting (Settings > Display) — there's no more per-entry
+  // override. Which entry actually renders it, if any, is decided by
+  // WeatherOverlayContext based on real-time visibility.
+  const weatherEnabled = hasBeenInView && !userProfile?.disable_weather_effects;
 
   const formatTemp = useCallback(
     (celsius: number) => formatTemperature(celsius, userProfile?.temperature_unit ?? undefined),
@@ -141,10 +152,6 @@ export function useEntryState({ entry, isPreview, initialWeatherEnabled }: UseEn
     if (playing) setHasClickedToPlay(true);
   }, []);
 
-  const toggleWeather = useCallback(() => {
-    setWeatherEnabled(prev => !prev);
-  }, []);
-
   return {
     // edit state
     isEditing,
@@ -162,7 +169,6 @@ export function useEntryState({ entry, isPreview, initialWeatherEnabled }: UseEn
 
     // weather
     weatherEnabled,
-    toggleWeather,
 
     // derived
     shouldBlurContent,

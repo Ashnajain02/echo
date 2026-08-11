@@ -59,7 +59,6 @@ const JournalEntryFullView: React.FC<JournalEntryFullViewProps> = ({
       mood={entry.mood}
       weather={entry.weather}
       weatherEnabled={state.weatherEnabled}
-      onWeatherToggle={state.toggleWeather}
       formatTemperature={state.formatTemp}
       actions={!isPreview ? (
         <EntryActions onEdit={state.startEditing} onDelete={state.handleDelete} />

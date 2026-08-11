@@ -33,6 +33,16 @@
     --destructive: 0 50% 45%;
     --destructive-foreground: 0 0% 98%;
 
+    /* Semantic states — same soft/warm treatment as the rest of the palette */
+    --success: 142 22% 36%;
+    --success-foreground: 40 30% 96%;
+
+    --warning: 38 55% 42%;
+    --warning-foreground: 40 30% 96%;
+
+    --info: 210 20% 42%;
+    --info-foreground: 40 30% 96%;
+
     --border: 40 10% 85%;
     --input: 40 10% 85%;
     --ring: 30 25% 40%;
@@ -78,6 +88,16 @@
 
     --destructive: 0 35% 40%;
     --destructive-foreground: 35 15% 90%;
+
+    /* Semantic states — same soft/warm treatment as the rest of the palette */
+    --success: 142 18% 55%;
+    --success-foreground: 30 15% 10%;
+
+    --warning: 38 40% 58%;
+    --warning-foreground: 30 15% 10%;
+
+    --info: 210 18% 62%;
+    --info-foreground: 30 15% 10%;
 
     --border: 30 10% 22%;
     --input: 30 10% 22%;
@@ -193,7 +213,37 @@
   .weather-icon {
     @apply w-8 h-8 text-muted-foreground;
   }
-  
+
+  /* Entry header metadata — Time / Location / Weather / Mood ledger row.
+     Vertical dividers between fields only — no top/bottom rule, so it reads
+     as a row of stats rather than a boxed-in grid/table. */
+  .entry-ledger {
+    @apply grid grid-cols-2 md:grid-cols-4;
+  }
+
+  .entry-ledger-field {
+    @apply text-center py-3.5 px-2;
+  }
+
+  .entry-ledger-field:not(:last-child) {
+    border-right: 1px solid hsl(var(--muted-foreground) / 0.3);
+  }
+
+  @media (max-width: 767px) {
+    .entry-ledger-field:nth-child(2n) {
+      border-right: none;
+    }
+  }
+
+  .entry-ledger-field dt {
+    @apply text-[0.6875rem] uppercase tracking-wider text-muted-foreground font-medium mb-1;
+  }
+
+  .entry-ledger-field dd {
+    @apply text-sm font-medium text-foreground/90 m-0 flex items-center justify-center gap-1.5;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* Elevated card style */
   .elevated-card {
     @apply bg-card border rounded-md;

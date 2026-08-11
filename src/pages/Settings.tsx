@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 import { AccountSettings } from '@/components/settings/AccountSettings';
 import { TemperatureSettings } from '@/components/settings/TemperatureSettings';
 import { BlurSettings } from '@/components/settings/BlurSettings';
+import { WeatherEffectsSettings } from '@/components/settings/WeatherEffectsSettings';
 import { ApiSettings } from '@/components/settings/ApiSettings';
 
 const Settings = () => {
@@ -42,6 +43,7 @@ const Settings = () => {
             <div className="space-y-6">
               <TemperatureSettings />
               <BlurSettings />
+              <WeatherEffectsSettings />
             </div>
           </TabsContent>
 

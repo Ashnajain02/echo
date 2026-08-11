@@ -99,7 +99,7 @@ const JournalEditorContainer: React.FC<JournalEditorContainerProps> = ({
   };
 
   const autoSaveText = lastAutoSave
-    ? <> &middot; Auto-saved {formatEntryTime(lastAutoSave.getTime())}</>
+    ? <>Auto-saved {formatEntryTime(lastAutoSave.getTime())}</>
     : null;
 
   return (

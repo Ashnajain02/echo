@@ -24,18 +24,18 @@ export const HabitProgress: React.FC<HabitProgressProps> = ({
         <span className="text-muted-foreground font-body">Today's progress</span>
         <span className={cn(
           "font-medium flex items-center gap-1.5",
-          allCompletedToday && "text-green-600 dark:text-green-400"
+          allCompletedToday && "text-success"
         )}>
           {allCompletedToday && <CheckCircle2 className="h-4 w-4" />}
           {completedCount} / {totalCount}
         </span>
       </div>
-      <Progress 
-        value={progress} 
+      <Progress
+        value={progress}
         className={cn(
           "h-2",
-          allCompletedToday && "[&>div]:bg-green-500"
-        )} 
+          allCompletedToday && "[&>div]:bg-success"
+        )}
       />
     </div>
   );

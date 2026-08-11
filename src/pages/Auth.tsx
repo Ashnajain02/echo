@@ -126,18 +126,18 @@ const Auth = () => {
               </TabsList>
               
               {resetSuccess && (
-                <Alert className="mb-4 bg-green-50 border-green-200">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-700">
+                <Alert variant="success" className="mb-4">
+                  <CheckCircle className="h-4 w-4" />
+                  <AlertDescription>
                     Password reset email sent! Check your inbox for a link to reset your password.
                   </AlertDescription>
                 </Alert>
               )}
-              
+
               {tokenError && (
-                <Alert className="mb-4 bg-amber-50 border-amber-200">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <AlertDescription className="text-amber-700">
+                <Alert variant="warning" className="mb-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
                     Your password reset link has expired. Please request a new one.
                   </AlertDescription>
                 </Alert>

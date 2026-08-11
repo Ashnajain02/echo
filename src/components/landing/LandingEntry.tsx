@@ -19,7 +19,8 @@ const LandingEntry: React.FC<LandingEntryProps> = ({ entry }) => {
   // Auto-enable weather when entry scrolls into view.
   // Intentionally one-way: do NOT auto-disable when the entry shrinks below
   // the threshold (e.g. when the Notes section expands and pushes content out
-  // of view). The user controls disabling via the "Weather on/off" toggle.
+  // of view). There's no per-entry toggle on the landing page (or anywhere
+  // else — see Settings > Display for the account-wide switch in the real app).
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -65,7 +66,6 @@ const LandingEntry: React.FC<LandingEntryProps> = ({ entry }) => {
           mood={entry.mood}
           weather={entry.weather}
           weatherEnabled={weatherEnabled}
-          onWeatherToggle={() => setWeatherEnabled(prev => !prev)}
           formatTemperature={formatTemp}
           footer={
             <div>

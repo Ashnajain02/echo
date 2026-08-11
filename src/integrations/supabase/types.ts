@@ -168,6 +168,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           disable_song_blur: boolean
+          disable_weather_effects: boolean
           first_name: string | null
           id: string
           last_name: string | null
@@ -184,6 +185,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           disable_song_blur?: boolean
+          disable_weather_effects?: boolean
           first_name?: string | null
           id: string
           last_name?: string | null
@@ -200,6 +202,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           disable_song_blur?: boolean
+          disable_weather_effects?: boolean
           first_name?: string | null
           id?: string
           last_name?: string | null
