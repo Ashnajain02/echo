@@ -4,6 +4,7 @@ import { AuthState, SignUpMetadata } from '@/types/auth';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/lib/errors';
 import { logger } from '@/lib/logger';
+import { identifyUser, resetAnalyticsIdentity } from '@/lib/analytics';
 
 const initialState: AuthState = {
   session: null,
@@ -63,6 +64,15 @@ export const useAuthProvider = () => {
         setAuthReady(prev => prev || true);
       } else if (event === 'SIGNED_OUT') {
         setAuthReady(false);
+      }
+
+      // Single choke point for tying analytics events to a real user —
+      // every sign-in path (password, OAuth, session restore on load) goes
+      // through onAuthStateChange, so this is the one place that needs it.
+      if (session?.user) {
+        identifyUser(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        resetAnalyticsIdentity();
       }
     });
 

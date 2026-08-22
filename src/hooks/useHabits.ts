@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLocalDate, extractLocalDate } from '@/utils/dateUtils';
 import { logger } from '@/lib/logger';
+import { trackEvent } from '@/lib/analytics';
 
 import confetti from 'canvas-confetti';
 
@@ -205,6 +206,7 @@ export function useHabits() {
         if (error) throw error;
         setCompletions(prev => prev.filter(c => c.id !== existingCompletion.id));
         setAllCompletedToday(false);
+        trackEvent('habit_completion_toggled', { completed: false });
       } else {
         // Complete - simple insert, handle duplicate gracefully
         const { data, error } = await supabase
@@ -223,6 +225,7 @@ export function useHabits() {
         }
         
         setCompletions(prev => [...prev, data]);
+        trackEvent('habit_completion_toggled', { completed: true });
       }
     } catch (error) {
       logger.error('useHabits', 'failed to toggle completion:', error);

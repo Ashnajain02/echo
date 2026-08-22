@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { JournalEntry } from '@/types';
 import { getPlainTextContent } from '@/utils/journalEntryMapper';
+import { trackEvent } from '@/lib/analytics';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -77,11 +78,27 @@ const JournalEditorContainer: React.FC<JournalEditorContainerProps> = ({
   }, [getCurrentEntry, onAutoSave]);
 
   const handlePublish = async () => {
-    if (!getPlainTextContent(content)) {
+    const plainText = getPlainTextContent(content);
+    if (!plainText) {
       return;
     }
     setIsPublishing(true);
-    try { onPublish(); } finally { setIsPublishing(false); }
+    try {
+      onPublish();
+      // mood/weather/track are the app's existing plaintext metadata (never
+      // the encrypted entry text) — same fields already shown in the UI, so
+      // no new privacy surface here. content_length_bucket avoids sending
+      // the actual text while still being useful for "are people writing
+      // more over time."
+      trackEvent('entry_published', {
+        has_track: Boolean(selectedTrack),
+        has_weather: Boolean(weatherData),
+        mood: selectedMood,
+        content_length_bucket: plainText.length < 200 ? 'short' : plainText.length < 800 ? 'medium' : 'long',
+      });
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleDelete = async () => {

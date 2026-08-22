@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { JournalEntry, TemperatureUnit } from '@/types';
 import { formatTemperature } from '@/utils/temperature';
 import { logger } from '@/lib/logger';
+import { trackEvent } from '@/lib/analytics';
 
 interface UserPreferences {
   temperature_unit: TemperatureUnit | null;
@@ -133,7 +134,10 @@ export function useEntryState({ entry, isPreview, initialWeatherEnabled }: UseEn
   );
 
   // Wire write operations to JournalContext.
-  const handleDelete = useCallback(() => deleteEntry(entry.id), [deleteEntry, entry.id]);
+  const handleDelete = useCallback(() => {
+    trackEvent('entry_deleted');
+    return deleteEntry(entry.id);
+  }, [deleteEntry, entry.id]);
   const handleAddComment = useCallback(
     (content: string) => addCommentToEntry(entry.id, content),
     [addCommentToEntry, entry.id],

@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { trackEvent } from '@/lib/analytics';
 
 
 export const WeatherEffectsSettings: React.FC = () => {
@@ -58,6 +59,7 @@ export const WeatherEffectsSettings: React.FC = () => {
   const handleToggle = (checked: boolean) => {
     // Switch reads as "Weather effects" (on = show), setting is the inverse.
     updateWeatherEffectsSetting.mutate(!checked);
+    trackEvent('weather_effects_setting_changed', { enabled: checked });
   };
 
   return (

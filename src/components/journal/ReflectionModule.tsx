@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { generateReflectionQuestions } from '@/services/api';
 import { useIsDemoMode } from '@/contexts/DemoModeContext';
 import { logger } from '@/lib/logger';
+import { trackEvent } from '@/lib/analytics';
 import ReflectionQuestion from './reflection/ReflectionQuestion';
 import ReflectionEditor from './reflection/ReflectionEditor';
 import ReflectionDisplay from './reflection/ReflectionDisplay';
@@ -55,6 +56,7 @@ const ReflectionModule: React.FC<ReflectionModuleProps> = ({
       setCurrentQuestionIndex(0);
       setShowModule(true);
       setIsEditing(true);
+      trackEvent('reflection_generated');
     } catch (error) {
       logger.error('ReflectionModule', 'failed to generate reflection questions:', error);
     } finally {
