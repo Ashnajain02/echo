@@ -98,22 +98,22 @@ const SearchFilterBar: React.FC<SearchFilterBarProps> = ({ entries, onMatchedEnt
   };
 
   return (
-    <div className="bg-card/50 backdrop-blur-sm border-b border-border/50 px-4 py-2.5">
-      <div className="max-w-3xl mx-auto flex items-center gap-2">
+    <div className="bg-card/60 backdrop-blur-sm border-b border-border/50 px-6 md:px-16 py-4">
+      <div className="max-w-3xl mx-auto flex flex-wrap items-center gap-3">
         {/* Search input */}
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-muted-foreground" />
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search..."
+            placeholder="Search your entries..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 bg-background/50 border-border/50 h-8 text-xs"
+            className="pl-10 bg-background/60 border-border h-11 text-sm"
           />
         </div>
 
         {/* Date filters inline */}
         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-[100px] h-8 text-xs bg-background/50 border-border/50">
+          <SelectTrigger className="w-[118px] h-11 text-sm bg-background/60 border-border">
             <SelectValue placeholder="Month" />
           </SelectTrigger>
           <SelectContent>
@@ -126,7 +126,7 @@ const SearchFilterBar: React.FC<SearchFilterBarProps> = ({ entries, onMatchedEnt
         </Select>
 
         <Select value={selectedDay} onValueChange={setSelectedDay}>
-          <SelectTrigger className="w-[70px] h-8 text-xs bg-background/50 border-border/50">
+          <SelectTrigger className="w-[84px] h-11 text-sm bg-background/60 border-border">
             <SelectValue placeholder="Day" />
           </SelectTrigger>
           <SelectContent>
@@ -139,7 +139,7 @@ const SearchFilterBar: React.FC<SearchFilterBarProps> = ({ entries, onMatchedEnt
         </Select>
 
         <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[80px] h-8 text-xs bg-background/50 border-border/50">
+          <SelectTrigger className="w-[100px] h-11 text-sm bg-background/60 border-border">
             <SelectValue placeholder="Year" />
           </SelectTrigger>
           <SelectContent>
@@ -153,8 +153,8 @@ const SearchFilterBar: React.FC<SearchFilterBarProps> = ({ entries, onMatchedEnt
         </Select>
 
         {isActive && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 w-8 p-0 text-muted-foreground shrink-0">
-            <X className="h-3.5 w-3.5" />
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-11 w-11 p-0 text-muted-foreground shrink-0">
+            <X className="h-4 w-4" />
           </Button>
         )}
       </div>

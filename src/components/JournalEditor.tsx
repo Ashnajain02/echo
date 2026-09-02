@@ -3,6 +3,10 @@ import { JournalEntry } from '@/types';
 import JournalEditorContainer from './journal/JournalEditorContainer';
 import { useDrafts } from '@/contexts/DraftsContext';
 import { useJournal } from '@/contexts/JournalContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { processPendingFutureLetters } from '@/utils/futureLetters';
+import { trackEvent } from '@/lib/analytics';
+import { logger } from '@/lib/logger';
 
 interface JournalEditorProps {
   initialDraft?: JournalEntry;
@@ -10,10 +14,11 @@ interface JournalEditorProps {
 }
 
 const JournalEditor: React.FC<JournalEditorProps> = ({ initialDraft, onComplete }) => {
-  const { addEntry } = useJournal();
-  const { 
-    createNewDraft, 
-    deleteDraft, 
+  const { addEntry, updateEntry } = useJournal();
+  const { authState } = useAuth();
+  const {
+    createNewDraft,
+    deleteDraft,
     publishDraft,
     autoSaveDraft,
     clearCurrentDraft,
@@ -45,11 +50,34 @@ const JournalEditor: React.FC<JournalEditorProps> = ({ initialDraft, onComplete 
 
   const handlePublish = useCallback(async () => {
     if (currentEntryState) {
-      await publishDraft(currentEntryState, addEntry);
+      const published = await publishDraft(currentEntryState, addEntry);
+
+      // Any "sealed" blocks written into the entry only become real letters
+      // once we have the entry's final, real DB id (a fresh entry starts
+      // with a temp `draft-...` id until this point).
+      if (published && authState.user) {
+        try {
+          const { content: processedContent, created } = await processPendingFutureLetters(
+            published.content,
+            published.id,
+            authState.user.id,
+          );
+          if (created.length > 0) {
+            await updateEntry({ ...published, content: processedContent });
+            created.forEach(() => trackEvent('future_letter_created'));
+          }
+        } catch (error) {
+          // The entry itself already published successfully above — don't let a
+          // failure here (e.g. the follow-up content update) block completing.
+          // Any un-flagged chip will simply be retried the next time this entry is saved.
+          logger.error('JournalEditor', 'failed to process pending future letters:', error);
+        }
+      }
+
       clearCurrentDraft();
       onComplete?.();
     }
-  }, [currentEntryState, publishDraft, addEntry, clearCurrentDraft, onComplete]);
+  }, [currentEntryState, publishDraft, addEntry, updateEntry, authState.user, clearCurrentDraft, onComplete]);
 
   const handleDelete = useCallback(async () => {
     if (currentEntryState) {

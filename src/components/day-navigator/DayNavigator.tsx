@@ -6,6 +6,7 @@ import { JournalEntry } from '@/types';
 import ScrollEntry from '@/components/shared/ScrollEntry';
 import SearchFilterBar from './SearchFilterBar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import FutureLetterArrivalBanner from '@/components/journal/future-letters/FutureLetterArrivalBanner';
 
 const DayNavigator: React.FC = () => {
   const isMobile = useIsMobile();
@@ -45,7 +46,7 @@ const DayNavigator: React.FC = () => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            className="overflow-hidden shrink-0"
           >
             <SearchFilterBar
               entries={entries}
@@ -60,6 +61,7 @@ const DayNavigator: React.FC = () => {
       {/* Vertical scroll feed */}
       {displayEntries.length > 0 ? (
         <div className="flex-1 overflow-y-auto">
+          {!isSearchActive && <FutureLetterArrivalBanner />}
           {displayEntries.map((entry) => (
             <ScrollEntry key={entry.id} entry={entry} />
           ))}
@@ -72,14 +74,19 @@ const DayNavigator: React.FC = () => {
         </div>
       )}
 
-      {/* Search icon — pinned top-right, just below nav */}
+      {/* Search toggle — fixed to the viewport's top-right corner, same size
+          as the "+" new-entry button (bottom-right, see Index.tsx) so the
+          two read as a matched pair. Sits just under the site nav rather
+          than flush at top-6 like "+" is flush at bottom-6, since a nav bar
+          (unlike the bottom edge) is actually there to collide with. */}
       <button
         onClick={() => setIsSearchOpen(prev => !prev)}
-        className={`fixed z-40 right-4 md:right-6 flex items-center justify-center h-10 w-10 rounded-full transition-all bg-card/60 backdrop-blur-sm border border-border/50 hover:bg-card/90 hover:border-border ${isSearchOpen ? 'bg-card/90 border-border' : ''}`}
-        style={{ top: navHeight + 8 }}
-        aria-label="Toggle search"
+        className={`fixed z-40 right-6 flex items-center justify-center h-14 w-14 rounded-full transition-all bg-card/90 backdrop-blur-sm border border-border shadow-lg hover:bg-card ${isSearchOpen ? 'bg-card border-foreground/20' : ''}`}
+        style={{ top: navHeight + 12 }}
+        aria-label={isSearchOpen ? 'Close search' : 'Open search'}
+        aria-expanded={isSearchOpen}
       >
-        <Search className="h-4 w-4 text-foreground" />
+        <Search className="h-6 w-6 text-foreground" />
       </button>
     </div>
   );
