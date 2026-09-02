@@ -56,3 +56,52 @@ export function trackEvent(name: string, properties?: Record<string, unknown>): 
   if (!initialized) return;
   posthog.capture(name, properties);
 }
+
+/**
+ * Forwards an application error to PostHog as a queryable event — the one
+ * sink `logger.error` calls (see src/lib/logger.ts). Before this, every
+ * `logger.error` call went to `console.error` and nowhere else: not
+ * recoverable from production, not visible to anyone unless a user had
+ * their devtools open and filed a bug report with a screenshot. PostHog was
+ * chosen over standing up something like Sentry because it's already
+ * installed and already identifying users (see identifyUser below) — this
+ * is the zero-new-infra first step, not a replacement for a real error
+ * monitor if/when one gets set up.
+ *
+ * Throttled per (scope + message): a broken retry loop turning into a
+ * PostHog event-quota incident would be a worse outcome than the silence
+ * this replaces.
+ */
+const ERROR_REPORT_THROTTLE_MS = 10_000;
+const recentErrorReports = new Map<string, number>();
+
+export function reportError(scope: string, message: string, error?: unknown): void {
+  if (!initialized) return;
+
+  const key = `${scope}:${message}`;
+  const now = Date.now();
+  const last = recentErrorReports.get(key);
+  if (last !== undefined && now - last < ERROR_REPORT_THROTTLE_MS) return;
+  recentErrorReports.set(key, now);
+
+  const errorMessage = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error !== null && 'message' in error && typeof (error as { message: unknown }).message === 'string'
+      ? (error as { message: string }).message
+      : undefined;
+  // Supabase (PostgREST/Auth/Storage) errors carry a `code` — useful for
+  // grouping ('23505' unique violation, '429' rate limited, etc.); plain
+  // network failures (TypeError: Failed to fetch) won't have one.
+  const errorCode = typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code: unknown }).code)
+    : undefined;
+
+  posthog.capture('app_error', {
+    scope,
+    message,
+    error_message: errorMessage,
+    error_name: error instanceof Error ? error.name : undefined,
+    error_code: errorCode,
+    path: typeof window !== 'undefined' ? window.location.pathname : undefined,
+  });
+}

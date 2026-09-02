@@ -8,10 +8,11 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { Button } from '@/components/ui/button';
-import { Bold, Italic, Underline as UnderlineIcon, ImagePlus, List, ListOrdered, CheckSquare } from 'lucide-react';
+import { Bold, Italic, Underline as UnderlineIcon, ImagePlus, List, ListOrdered, CheckSquare, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { ENTRY_PROSE_CLASS } from './InteractiveContent';
+import { FutureLetterNode } from './futureLetterNode';
 
 
 interface RichTextEditorProps {
@@ -73,6 +74,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           class: 'task-item',
         },
       }),
+      FutureLetterNode,
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -136,6 +138,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     // Reset input
     e.target.value = '';
   }, [handleImageUpload]);
+
+  const handleInsertFutureLetter = useCallback(() => {
+    if (!editor) return;
+    // Drops a live, empty composer node right at the cursor — see
+    // FutureLetterNodeView for the inline write/seal UI. Nothing is sent
+    // until the user fills it in and hits "Seal it" there.
+    editor.chain().focus().insertContent({ type: 'futureLetter' }).run();
+  }, [editor]);
 
   if (!editor) {
     return null;
@@ -229,6 +239,17 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         >
           <ImagePlus className="h-4 w-4" />
         </Button>
+        <div className="w-px h-5 bg-border mx-1" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          title="Tell your future self something"
+          onClick={handleInsertFutureLetter}
+        >
+          <Mail className="h-4 w-4" />
+        </Button>
         <input
           ref={fileInputRef}
           type="file"
@@ -240,7 +261,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
       {/* Editor */}
       <EditorContent editor={editor} />
-
     </div>
   );
 };

@@ -20,19 +20,21 @@ const ReflectionDisplay: React.FC<ReflectionDisplayProps> = ({
     <>
       <div className="text-left whitespace-pre-wrap mb-2">{answer}</div>
       <div className="flex justify-end space-x-2">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="icon"
           onClick={onEdit}
+          aria-label="Edit reflection"
           className="h-8 w-8 p-0"
         >
           <Pencil className="h-4 w-4" />
         </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onDelete} 
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onDelete}
           disabled={isLoading}
+          aria-label="Delete reflection"
           className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
         >
           <Trash2 className="h-4 w-4" />

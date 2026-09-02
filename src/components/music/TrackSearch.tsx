@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MusicTrack } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Music, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Search, Music, Loader2, AlertCircle } from 'lucide-react';
+import { invokeFunctionWithTimeout } from '@/lib/invokeFunction';
+import { logger } from '@/lib/logger';
 
 interface TrackSearchProps {
   isOpen: boolean;
@@ -25,12 +26,18 @@ const TrackSearch: React.FC<TrackSearchProps> = ({ isOpen, onClose, onTrackSelec
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ITunesResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  // Distinguishes "searched and found nothing" from "the search itself
+  // failed" — both used to render as an identical, silent "No results
+  // found", which reads as "this song doesn't exist" when the real problem
+  // was a network/server error and retrying would help.
+  const [searchFailed, setSearchFailed] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Live search — debounced 400ms
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
+      setSearchFailed(false);
       return;
     }
 
@@ -39,8 +46,9 @@ const TrackSearch: React.FC<TrackSearchProps> = ({ isOpen, onClose, onTrackSelec
 
     debounceRef.current = setTimeout(async () => {
       setIsSearching(true);
+      setSearchFailed(false);
       try {
-        const { data, error } = await supabase.functions.invoke('itunes-search', {
+        const { data, error } = await invokeFunctionWithTimeout<{ results: ITunesResult[] }>('itunes-search', {
           body: { query, limit: 8 },
         });
         if (cancelled) return;
@@ -48,8 +56,9 @@ const TrackSearch: React.FC<TrackSearchProps> = ({ isOpen, onClose, onTrackSelec
         setResults(data?.results || []);
       } catch (error) {
         if (cancelled) return;
-        console.error('iTunes search error:', error);
+        logger.error('TrackSearch', 'iTunes search failed:', error);
         setResults([]);
+        setSearchFailed(true);
       } finally {
         if (!cancelled) setIsSearching(false);
       }
@@ -66,6 +75,7 @@ const TrackSearch: React.FC<TrackSearchProps> = ({ isOpen, onClose, onTrackSelec
     if (!isOpen) {
       setQuery('');
       setResults([]);
+      setSearchFailed(false);
     }
   }, [isOpen]);
 
@@ -106,7 +116,14 @@ const TrackSearch: React.FC<TrackSearchProps> = ({ isOpen, onClose, onTrackSelec
 
         <div className="max-h-80 overflow-y-auto mt-1">
           {results.length === 0 && !isSearching && query.length > 1 && (
-            <p className="text-sm text-muted-foreground text-center py-8">No results found</p>
+            searchFailed ? (
+              <p className="text-sm text-muted-foreground text-center py-8 flex flex-col items-center gap-2">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />
+                Search failed. Please try again.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">No results found</p>
+            )
           )}
           {results.map((result) => (
             <button

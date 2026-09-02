@@ -35,6 +35,53 @@ export type Database = {
         }
         Relationships: []
       }
+      future_letters: {
+        Row: {
+          created_at: string
+          deliver_at: string
+          id: string
+          kind: string
+          message_encrypted: string
+          opened_at: string | null
+          replied_at: string | null
+          reply_encrypted: string | null
+          source_entry_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deliver_at: string
+          id?: string
+          kind: string
+          message_encrypted: string
+          opened_at?: string | null
+          replied_at?: string | null
+          reply_encrypted?: string | null
+          source_entry_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deliver_at?: string
+          id?: string
+          kind?: string
+          message_encrypted?: string
+          opened_at?: string | null
+          replied_at?: string | null
+          reply_encrypted?: string | null
+          source_entry_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "future_letters_source_entry_id_fkey"
+            columns: ["source_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       habit_completions: {
         Row: {
           completed_date: string

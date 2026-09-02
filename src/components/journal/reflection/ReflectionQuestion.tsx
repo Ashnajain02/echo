@@ -37,35 +37,38 @@ const ReflectionQuestion: React.FC<ReflectionQuestionProps> = ({
       </div>
       <div className="flex space-x-1 ml-2">
         {isEditing && totalQuestions > 1 && (
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            onClick={onCycle} 
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onCycle}
             disabled={isLoading}
             className="h-8 w-8 p-0"
             title="Next question"
+            aria-label="Next question"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         )}
         {isEditing && (
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            onClick={onRefresh} 
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onRefresh}
             disabled={isLoading}
             className="h-8 w-8 p-0"
             title="Generate new questions"
+            aria-label="Generate new questions"
           >
             <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         )}
-        <Button 
-          size="icon" 
-          variant="ghost" 
+        <Button
+          size="icon"
+          variant="ghost"
           onClick={onClose}
           className="h-8 w-8 p-0"
           title="Close"
+          aria-label="Close reflection"
         >
           <X className="h-4 w-4" />
         </Button>

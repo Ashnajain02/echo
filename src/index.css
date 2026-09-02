@@ -1,5 +1,10 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500&family=Caveat:wght@400;500;600;700&display=swap');
+/* Font <link>s live in index.html now, not here — see the comment there for
+   why. This file's own stylesheet is already render-blocking (correctly —
+   that's how we avoid a flash of unstyled content for the app's own CSS),
+   so a `@import` here forced the browser to fetch and parse this whole file
+   BEFORE it could even discover the Google Fonts request, serializing a
+   third-party round trip behind our own CSS on every single first visit. */
 
 @tailwind base;
 @tailwind components;
@@ -291,6 +296,187 @@
   .editorial-link:hover::after {
     width: 100%;
   }
+
+  /* Future Letters — the inline "sealed" mark dropped into an entry while
+     writing (see futureLetterNode.ts). A small drawn envelope, not text —
+     left-aligned with the surrounding paragraph, slightly askew and lifted
+     off the page like something physically tucked in there. No label: it
+     should read as an object first, a mystery second. */
+  .future-letter-envelope-wrap {
+    @apply flex justify-start my-5;
+  }
+
+  /* A sealed chip whose letter has arrived: hidden, not removed. The live
+     FutureLetterCard is portalled into a sibling host next to it, and the
+     chip stays untouched so it can be serialized back into the entry's
+     stored content unchanged. See liveLetterDom.ts. */
+  .future-letter-chip--live {
+    display: none;
+  }
+
+  .future-letter-envelope-svg {
+    width: 4.5rem;
+    height: 3.375rem;
+    transform: rotate(-3deg);
+    filter: drop-shadow(0 4px 8px hsl(var(--foreground) / 0.14));
+    transition: transform 0.2s ease;
+  }
+
+  .future-letter-envelope-wrap:hover .future-letter-envelope-svg {
+    transform: rotate(-1deg) translateY(-1px);
+  }
+
+  .future-letter-envelope-body {
+    fill: hsl(var(--card));
+    stroke: hsl(var(--muted-foreground) / 0.5);
+    stroke-width: 1.5;
+  }
+
+  .future-letter-envelope-flap {
+    fill: hsl(var(--accent) / 0.7);
+    stroke: hsl(var(--muted-foreground) / 0.5);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+
+  .future-letter-envelope-seal {
+    fill: hsl(var(--primary));
+  }
+
+  /* Future Letters — the live, in-document composer (FutureLetterNodeView)
+     shown while a sealed block hasn't been sealed yet. Same dashed-border
+     language as the sealed chip since it becomes one. */
+  .future-letter-composer {
+    @apply block my-4 px-4 py-4 rounded-md;
+    background: hsl(var(--accent) / 0.5);
+    border: 1px dashed hsl(var(--muted-foreground) / 0.4);
+  }
+
+  .future-letter-composer-header {
+    @apply flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-2.5;
+  }
+
+  .future-letter-composer-textarea {
+    @apply text-sm bg-background/60;
+  }
+
+  .future-letter-composer-actions {
+    @apply flex justify-end gap-2 mt-2.5;
+  }
+
+  /* Future Letters — the "Unified Card": portaled directly into the sealed
+     chip's position once it's due (see useFutureLetterPortalTargets), or
+     shown inside the feed's arrival dialog. Translucent + blurred rather
+     than a flat opaque fill, so it reads as part of the entry's own warm,
+     glowing page background instead of a plain card dropped on top of it. */
+  .future-letter-card {
+    @apply rounded-md border border-border/70 my-4 overflow-hidden;
+    background: hsl(var(--card) / 0.82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 1px 2px hsl(var(--foreground) / 0.02), 0 4px 12px hsl(var(--foreground) / 0.04);
+  }
+
+  /* The open trigger: the same envelope object, now twinkling and
+     clickable, with a little tossed-on "open it!" sticker. One click opens
+     the letter — no separate confirm step. Unboxed and left-aligned, same
+     footprint as the plain sealed chip (.future-letter-envelope-wrap) it
+     replaces in place — this is still just an object sitting in the text,
+     not a panel. */
+  .future-letter-open-trigger {
+    @apply flex flex-col items-start gap-2 my-5 text-left;
+  }
+
+  .future-letter-open-trigger:hover .future-letter-envelope-motion {
+    transform: translateY(-1px);
+  }
+
+  .future-letter-open-visual {
+    @apply relative inline-flex items-center justify-center;
+    width: 4.5rem;
+    height: 3.375rem;
+  }
+
+  /* Explicit stacking layer, lower than the sparkles — framer-motion's
+     `animate` transform on this element would otherwise promote it into the
+     browser's default paint order ahead of them regardless of z-index. */
+  .future-letter-envelope-motion {
+    position: relative;
+    z-index: 1;
+    transition: transform 0.2s ease;
+  }
+
+  .future-letter-sparkle {
+    @apply absolute pointer-events-none;
+    z-index: 2;
+    color: hsl(var(--primary));
+    transform: translate(-50%, -50%);
+  }
+
+  .future-letter-open-sticker {
+    @apply absolute -top-3 -right-6 whitespace-nowrap rounded-full px-2.5 py-1 pointer-events-none;
+    z-index: 3;
+    font-family: var(--font-script);
+    font-size: 1.0625rem;
+    line-height: 1;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    transform: rotate(11deg);
+    box-shadow: 0 2px 6px hsl(var(--foreground) / 0.18);
+  }
+
+  .future-letter-open-caption {
+    @apply text-sm text-muted-foreground;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .future-letter-sparkle {
+      display: none;
+    }
+  }
+
+  .future-letter-revealed {
+    @apply px-5 py-5;
+  }
+
+  /* Small, quiet echo of the envelope used as the revealed view's section
+     marker — same object, no longer the star of the show. */
+  .future-letter-envelope-svg--tiny {
+    width: 1.5rem;
+    height: 1.125rem;
+    filter: none;
+    transform: none;
+  }
+
+  /* The "A letter arrived:" row at the top of the main feed — inviting,
+     unlike the plain, quiet .future-letter-chip (that one means "sealed,
+     not due yet"; this one means "ready to open"). */
+  .future-letter-arrival-row {
+    @apply flex items-center gap-2.5 px-4 py-3 rounded-md border my-3;
+    background: hsl(var(--primary) / 0.06);
+    border-color: hsl(var(--primary) / 0.25);
+  }
+
+  /* Briefly marks the envelope a banner click just scrolled to — in a feed
+     with several arrived letters, otherwise nothing distinguishes "the one
+     you clicked" from any other once you land on it. See
+     scrollToFutureLetter.ts. Radius matches .future-letter-open-visual so
+     the glow traces the envelope, not a rectangle around it. */
+  .future-letter-live-highlight .future-letter-open-visual {
+    animation: future-letter-highlight-pulse 1.6s ease-out;
+    border-radius: 9999px;
+  }
+
+  @keyframes future-letter-highlight-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+    25% { box-shadow: 0 0 0 10px hsl(var(--primary) / 0.16); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .future-letter-live-highlight .future-letter-open-visual {
+      animation: none;
+    }
+  }
 }
 
 /* Utility for display font */
@@ -366,25 +552,37 @@
   margin: 0.5rem 0;
 }
 
-.tiptap ul[data-type="taskList"] li,
-.interactive-content ul[data-type="taskList"] li[data-type="taskItem"] {
-  display: flex;
-  align-items: flex-start;
+/* Match on the `.task-item` class (set via TaskItem.configure's
+   HTMLAttributes in RichTextEditor.tsx) rather than [data-type="taskItem"].
+   TipTap's live in-editor NodeView (what .tiptap actually renders while
+   you're typing) never sets data-type on the <li> — that attribute only
+   shows up in the *serialized* HTML (editor.getHTML(), and so what
+   .interactive-content reads back later). The class is present in both, so
+   it's the one selector that reliably matches while actively editing. */
+.tiptap li.task-item,
+.interactive-content li.task-item {
+  display: flex !important;
+  /* center, not flex-start: entry body text uses a tall 1.9 line-height
+     (see ENTRY_PROSE_CLASS), so pinning the checkbox to the top of that
+     line-box left it sitting visibly higher than the text's own glyphs —
+     centering both against the row aligns the checkbox with where the
+     text actually looks like it sits. */
+  align-items: center;
   gap: 0.5rem;
+  list-style: none;
   margin: 0.25rem 0;
 }
 
-.tiptap ul[data-type="taskList"] li > label,
-.interactive-content ul[data-type="taskList"] li[data-type="taskItem"] > label {
+.tiptap li.task-item > label,
+.interactive-content li.task-item > label {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  margin-top: 0.125rem;
   user-select: none;
 }
 
-.tiptap ul[data-type="taskList"] li > label input[type="checkbox"],
-.interactive-content ul[data-type="taskList"] li[data-type="taskItem"] > label input[type="checkbox"] {
+.tiptap li.task-item > label input[type="checkbox"],
+.interactive-content li.task-item > label input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
   cursor: pointer;
@@ -392,27 +590,27 @@
   border-radius: 0.25rem;
 }
 
-.tiptap ul[data-type="taskList"] li > div,
-.interactive-content ul[data-type="taskList"] li[data-type="taskItem"] > div {
+.tiptap li.task-item > div,
+.interactive-content li.task-item > div {
   flex: 1;
   min-width: 0;
   caret-color: hsl(var(--foreground));
 }
 
-.tiptap ul[data-type="taskList"] li > div p,
-.interactive-content ul[data-type="taskList"] li[data-type="taskItem"] > div p {
+.tiptap li.task-item > div p,
+.interactive-content li.task-item > div p {
   margin: 0;
 }
 
-.tiptap ul[data-type="taskList"] li[data-checked="true"] > div,
-.interactive-content ul[data-type="taskList"] li[data-type="taskItem"][data-checked="true"] > div {
+.tiptap li.task-item[data-checked="true"] > div,
+.interactive-content li.task-item[data-checked="true"] > div {
   text-decoration: line-through;
   opacity: 0.6;
 }
 
 /* Ensure cursor is always visible in task items */
-.tiptap [data-type="taskItem"],
-.tiptap [data-type="taskItem"] > div,
-.tiptap [data-type="taskItem"] p {
+.tiptap li.task-item,
+.tiptap li.task-item > div,
+.tiptap li.task-item p {
   caret-color: hsl(var(--foreground));
 }

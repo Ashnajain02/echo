@@ -14,7 +14,7 @@ interface DraftsContextType {
   currentDraft: JournalEntry | null;
   saveDraft: (entry: JournalEntry) => Promise<string | null>;
   deleteDraft: (draftId: string) => Promise<void>;
-  publishDraft: (entry: JournalEntry, addToContext: (entry: JournalEntry) => Promise<void>) => Promise<void>;
+  publishDraft: (entry: JournalEntry, addToContext: (entry: JournalEntry) => Promise<void>) => Promise<JournalEntry | null>;
   loadDraft: (draftId: string) => void;
   clearCurrentDraft: () => void;
   createNewDraft: () => JournalEntry;
@@ -40,6 +40,9 @@ export function DraftsProvider({ children }: { children: React.ReactNode }) {
   const [currentDraft, setCurrentDraft] = useState<JournalEntry | null>(null);
   const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Serializes concurrent saveDraft calls (see saveDraft below) — there's
+  // only ever one editor open at a time in this UI, so one lock is enough.
+  const saveDraftLockRef = useRef<Promise<void>>(Promise.resolve());
 
   // ── Load drafts from DB ──
 
@@ -100,6 +103,23 @@ export function DraftsProvider({ children }: { children: React.ReactNode }) {
   const saveDraft = useCallback(async (entry: JournalEntry): Promise<string | null> => {
     if (!authState.user) return null;
     if (!hasMeaningfulContent(entry)) return null;
+
+    // The temp-id branch below is check-then-act (SELECT for an existing
+    // row, INSERT if none) — not atomic. A debounced autosave already in
+    // flight and an explicit Publish click can both reach that SELECT
+    // before either one's INSERT commits, so both see "no row yet" and
+    // both insert — the exact class of bug
+    // journal_entries_unique_user_draft_timestamp (see migration
+    // 20260117195250) exists to catch. Catching it there just meant one of
+    // the two calls failed with a swallowed unique-violation and its
+    // content silently never made it to the DB. Serializing calls through
+    // this lock closes the race at the root instead: by the time a second
+    // call's SELECT runs, the first has already committed, so it correctly
+    // finds the row and UPDATEs it.
+    const previousSave = saveDraftLockRef.current;
+    let releaseLock!: () => void;
+    saveDraftLockRef.current = new Promise<void>((resolve) => { releaseLock = resolve; });
+    await previousSave;
 
     try {
       const encryptedEntry = await encryptJournalEntry(entry, authState.user.id);
@@ -166,6 +186,8 @@ export function DraftsProvider({ children }: { children: React.ReactNode }) {
     } catch (error: unknown) {
       logger.error('DraftsContext', 'failed to save draft:', error);
       return null;
+    } finally {
+      releaseLock();
     }
   }, [authState.user]);
 
@@ -230,11 +252,11 @@ export function DraftsProvider({ children }: { children: React.ReactNode }) {
   // ── Publish draft ──
   // Simple flow: cancel auto-save → ensure draft is saved → flip status to published.
 
-  const publishDraft = useCallback(async (entry: JournalEntry, addToContext: (entry: JournalEntry) => Promise<void>) => {
-    if (!authState.user) return;
+  const publishDraft = useCallback(async (entry: JournalEntry, addToContext: (entry: JournalEntry) => Promise<void>): Promise<JournalEntry | null> => {
+    if (!authState.user) return null;
 
     if (!getPlainTextContent(entry.content)) {
-      return;
+      return null;
     }
 
     // 1. Cancel any pending auto-save
@@ -259,6 +281,8 @@ export function DraftsProvider({ children }: { children: React.ReactNode }) {
         const publishedEntry: JournalEntry = { ...entry, id: savedId };
         await addToContext(publishedEntry);
         setDrafts(prev => prev.filter(d => d.id !== savedId && d.id !== entry.id));
+        setCurrentDraft(null);
+        return publishedEntry;
       } else {
         // saveDraft returned null (no meaningful content or already handled)
         // Insert directly as published
@@ -286,11 +310,12 @@ export function DraftsProvider({ children }: { children: React.ReactNode }) {
         };
         await addToContext(publishedEntry);
         setDrafts(prev => prev.filter(d => d.id !== entry.id));
+        setCurrentDraft(null);
+        return publishedEntry;
       }
-
-      setCurrentDraft(null);
     } catch (error: unknown) {
       logger.error('DraftsContext', 'failed to publish draft:', error);
+      return null;
     }
   }, [authState.user, saveDraft]);
 

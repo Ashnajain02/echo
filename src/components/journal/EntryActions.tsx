@@ -1,7 +1,10 @@
 
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, MoreHorizontal } from 'lucide-react';
+import { logger } from '@/lib/logger';
+import { getErrorMessage } from '@/lib/errors';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,28 +24,44 @@ import {
 
 interface EntryActionsProps {
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
 }
 
 const EntryActions: React.FC<EntryActionsProps> = ({ onEdit, onDelete }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    onDelete();
-    setIsDeleteDialogOpen(false);
+  const confirmDelete = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await onDelete();
+    } catch (error) {
+      // AlertDialogAction always closes the confirm dialog on click
+      // (Radix), regardless of how this promise settles — without this the
+      // entry would just silently fail to delete with no explanation, and
+      // whether the dialog is still open or not, the user has no way to
+      // tell it didn't work.
+      logger.error('EntryActions', 'failed to delete entry:', error);
+      toast.error(getErrorMessage(error, "Couldn't delete this entry. Please try again."));
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
   };
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
+            aria-label="Entry actions"
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
           >
             <MoreHorizontal className="h-4 w-4" />
@@ -73,8 +92,9 @@ const EntryActions: React.FC<EntryActionsProps> = ({ onEdit, onDelete }) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete} 
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

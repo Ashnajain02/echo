@@ -14,6 +14,21 @@
          `window.__spotifySDKReady`. -->
     <link rel="dns-prefetch" href="https://sdk.scdn.co" />
     <link rel="preconnect" href="https://sdk.scdn.co" crossorigin />
+
+    <!-- Google Fonts as real <link>s, not a CSS @import (see index.css) —
+         the HTML preload scanner finds these while it's still streaming the
+         rest of <head>, so the font CSS (and, via preconnect, the TLS
+         handshake for the font files themselves) is already in flight in
+         parallel with our own JS/CSS instead of queued behind them. Directly
+         addresses the "poor FCP" PostHog was reporting: this was previously
+         a fully serial hop — fetch app CSS, parse it, discover the import,
+         *then* start the Google Fonts request. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500&family=Caveat:wght@400;500;600;700&display=swap"
+    />
     <script>
       window.__spotifySDKReadyPromiseResolvers = [];
       window.__spotifySDKLoadFailed = false;

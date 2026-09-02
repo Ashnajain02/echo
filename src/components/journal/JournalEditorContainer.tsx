@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { JournalEntry } from '@/types';
 import { getPlainTextContent } from '@/utils/journalEntryMapper';
 import { trackEvent } from '@/lib/analytics';
+import { getErrorMessage } from '@/lib/errors';
+import { logger } from '@/lib/logger';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -16,8 +19,8 @@ import { Trash2, Save, Send } from 'lucide-react';
 
 interface JournalEditorContainerProps {
   entry: JournalEntry;
-  onPublish: () => void;
-  onDelete: () => void;
+  onPublish: () => Promise<void>;
+  onDelete: () => Promise<void>;
   onClose: () => void;
   onAutoSave: (entry: JournalEntry) => void;
   lastAutoSave: Date | null;
@@ -84,7 +87,15 @@ const JournalEditorContainer: React.FC<JournalEditorContainerProps> = ({
     }
     setIsPublishing(true);
     try {
-      onPublish();
+      // Must be awaited: this button's own disabled={isPublishing} guard —
+      // the app's only defense against a double-click firing two publishes
+      // — is worthless if `finally` below runs before the actual network
+      // work finishes. It previously didn't: onPublish() was fired without
+      // awaiting, so `isPublishing` reset to false (re-enabling the button)
+      // almost immediately, well before publishDraft's write actually
+      // completed, and any failure became a silent unhandled rejection —
+      // the button just went back to "Publish" with zero explanation.
+      await onPublish();
       // mood/weather/track are the app's existing plaintext metadata (never
       // the encrypted entry text) — same fields already shown in the UI, so
       // no new privacy surface here. content_length_bucket avoids sending
@@ -96,6 +107,9 @@ const JournalEditorContainer: React.FC<JournalEditorContainerProps> = ({
         mood: selectedMood,
         content_length_bucket: plainText.length < 200 ? 'short' : plainText.length < 800 ? 'medium' : 'long',
       });
+    } catch (error) {
+      logger.error('JournalEditorContainer', 'failed to publish entry:', error);
+      toast.error(getErrorMessage(error, "Couldn't publish your entry. Please try again."));
     } finally {
       setIsPublishing(false);
     }
@@ -108,7 +122,16 @@ const JournalEditorContainer: React.FC<JournalEditorContainerProps> = ({
       if (!confirmDelete) return;
     }
     setIsDeleting(true);
-    try { onDelete(); } finally { setIsDeleting(false); }
+    try {
+      // Same fix as handlePublish above, and same previous bug: unawaited,
+      // so the button re-enabled and any failure vanished silently.
+      await onDelete();
+    } catch (error) {
+      logger.error('JournalEditorContainer', 'failed to delete draft:', error);
+      toast.error(getErrorMessage(error, "Couldn't delete this entry. Please try again."));
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSaveAndClose = () => {
