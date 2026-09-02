@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
+import { SUPABASE_URL } from '@/integrations/supabase/client';
 import { apiKeysTable } from '@/integrations/supabase/extensions';
+import { invokeFunctionWithTimeout } from '@/lib/invokeFunction';
+import { getErrorMessage } from '@/lib/errors';
 import { useToast } from '@/hooks/use-toast';
 import { Copy, Key, RefreshCw, Trash2, Eye, EyeOff } from 'lucide-react';
 import { formatShortDate, formatDateTimeStamp } from '@/utils/dateUtils';
@@ -54,11 +56,12 @@ export const ApiSettings: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-api-key', {
+      const { data, error } = await invokeFunctionWithTimeout<{ key: string }>('generate-api-key', {
         method: 'POST',
       });
 
       if (error) throw error;
+      if (!data) throw new Error('No API key returned');
       setFreshKey(data.key);
       setKeyMeta({ created_at: new Date().toISOString(), last_used_at: null });
       setShowKey(true);
@@ -66,7 +69,7 @@ export const ApiSettings: React.FC = () => {
       logger.error('ApiSettings', 'failed to generate API key:', error);
       toast({
         title: 'Error',
-        description: 'Failed to generate API key.',
+        description: getErrorMessage(error, 'Failed to generate API key.'),
         variant: 'destructive',
       });
     } finally {
@@ -80,7 +83,7 @@ export const ApiSettings: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('generate-api-key', {
+      const { error } = await invokeFunctionWithTimeout('generate-api-key', {
         method: 'DELETE',
       });
 
@@ -92,7 +95,7 @@ export const ApiSettings: React.FC = () => {
       logger.error('ApiSettings', 'failed to revoke API key:', error);
       toast({
         title: 'Error',
-        description: 'Failed to revoke API key.',
+        description: getErrorMessage(error, 'Failed to revoke API key.'),
         variant: 'destructive',
       });
     } finally {

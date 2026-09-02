@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { JournalComment } from '@/types';
 import { formatCommentDate, formatCommentTime } from '@/utils/dateUtils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageCircle, Calendar, Clock, ChevronDown, ChevronUp, Trash2, Plus } from 'lucide-react';
+import { MessageCircle, Calendar, Clock, ChevronDown, ChevronUp, Trash2, Plus, Loader2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   AlertDialog,
@@ -19,8 +20,8 @@ import {
 
 interface CommentSectionProps {
   comments: JournalComment[];
-  onAddComment: (content: string) => void;
-  onDeleteComment?: (commentId: string) => void;
+  onAddComment: (content: string) => Promise<void>;
+  onDeleteComment?: (commentId: string) => Promise<void>;
   className?: string;
 }
 
@@ -34,18 +35,49 @@ const CommentSection: React.FC<CommentSectionProps> = ({
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
+  // Guards both against firing the same write twice (a fast double-click
+  // previously fired onAddComment/onDeleteComment every time — nothing
+  // disabled the button while the first request was still in flight) and
+  // against the ambiguous "did that save?" state a failure used to leave
+  // behind: the box closed and the text was gone whether or not the write
+  // actually succeeded, because neither call was awaited.
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isDeletingComment, setIsDeletingComment] = useState(false);
 
-  const handleSubmitComment = () => {
-    if (newComment.trim()) {
-      onAddComment(newComment);
+  const handleSubmitComment = async () => {
+    const trimmed = newComment.trim();
+    if (!trimmed || isSubmittingComment) return;
+
+    setIsSubmittingComment(true);
+    try {
+      await onAddComment(trimmed);
       setNewComment('');
       setIsAddingComment(false);
+    } catch {
+      // Leave the composer open with the draft intact — nothing was lost,
+      // and the user can just hit Add again once whatever failed clears up.
+      toast.error("Couldn't save that note. Please try again.");
+    } finally {
+      setIsSubmittingComment(false);
     }
   };
 
-  const handleDeleteComment = () => {
-    if (commentToDelete && onDeleteComment) {
-      onDeleteComment(commentToDelete);
+  const handleDeleteComment = async () => {
+    if (!commentToDelete || !onDeleteComment || isDeletingComment) return;
+    const id = commentToDelete;
+
+    setIsDeletingComment(true);
+    try {
+      await onDeleteComment(id);
+    } catch {
+      // The note itself is untouched either way — deleteCommentFromEntry
+      // only updates local state after a successful write — but
+      // AlertDialogAction always closes the confirm dialog on click, so
+      // without this the user has no way to know the delete silently
+      // failed and the note is still sitting right there.
+      toast.error("Couldn't delete that note. Please try again.");
+    } finally {
+      setIsDeletingComment(false);
       setCommentToDelete(null);
     }
   };
@@ -83,6 +115,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({
                         variant="ghost"
                         size="icon"
                         onClick={() => setCommentToDelete(comment.id)}
+                        aria-label="Delete note"
                         className="h-6 w-6 -mt-1 -mr-1 text-muted-foreground hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -123,8 +156,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({
                 >
                   Cancel
                 </Button>
-                <Button size="sm" onClick={handleSubmitComment}>
-                  Add
+                <Button size="sm" onClick={handleSubmitComment} disabled={isSubmittingComment || !newComment.trim()}>
+                  {isSubmittingComment && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                  {isSubmittingComment ? 'Adding...' : 'Add'}
                 </Button>
               </div>
             </div>
@@ -151,8 +185,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteComment} 
+            <AlertDialogAction
+              onClick={handleDeleteComment}
+              disabled={isDeletingComment}
               className="bg-destructive text-destructive-foreground"
             >
               Delete

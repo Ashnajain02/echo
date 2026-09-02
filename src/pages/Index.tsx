@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { useJournal } from '@/contexts/JournalContext';
 import Layout from '@/components/Layout';
-import JournalEditor from '@/components/JournalEditor';
 import LandingPage from '@/components/landing/LandingPage';
 import { Button } from '@/components/ui/button';
 import { Plus, Loader2, FileText } from 'lucide-react';
@@ -15,6 +14,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+
+// Lazy: pulls in the full TipTap stack (starter kit + underline/image/
+// task-list/placeholder extensions). Index is deliberately eager (see
+// App.tsx) so *something* paints immediately, but every visitor lands here —
+// including every logged-out visitor, who sees LandingPage and never
+// touches this at all — so the editor itself must not ride along in that
+// same eager bundle. Only fetched once someone actually clicks "new entry".
+const JournalEditor = lazy(() => import('@/components/JournalEditor'));
+
+const EditorFallback = () => (
+  <div className="flex justify-center items-center py-20">
+    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+  </div>
+);
 
 const Index = () => {
   const { authState } = useAuth();
@@ -69,10 +82,12 @@ const Index = () => {
         <div className="fixed inset-0 flex flex-col" style={{ paddingTop: isMobile ? 56 : 64 }}>
           <div className="flex-1 overflow-y-auto">
             <div className="w-full max-w-3xl mx-auto px-6 md:px-16 pt-10 pb-24">
-              <JournalEditor
-                initialDraft={editingDraft || undefined}
-                onComplete={handleFinishWriting}
-              />
+              <Suspense fallback={<EditorFallback />}>
+                <JournalEditor
+                  initialDraft={editingDraft || undefined}
+                  onComplete={handleFinishWriting}
+                />
+              </Suspense>
             </div>
           </div>
         </div>

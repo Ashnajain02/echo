@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JournalEntry } from '@/types';
 import { moodLabels } from '@/constants/moods';
@@ -7,7 +8,6 @@ import { formatEntryDate, formatEntryYear, formatEntryTime } from '@/utils/dateU
 import CommentSection from './CommentSection';
 import TrackClipPlayer from '@/components/music/TrackClipPlayer';
 import InteractiveContent from './InteractiveContent';
-import JournalEditorInline from './JournalEditorInline';
 import ReflectionModule from './ReflectionModule';
 import EntryActions from './EntryActions';
 import {
@@ -16,6 +16,11 @@ import {
 } from './weather-overlay';
 import { useEntryState } from './useEntryState';
 import { useEntryCardWeather } from './useEntryCardWeather';
+
+// Lazy — see the matching comment in JournalEntryFullView.tsx. Same
+// component, same reasoning: don't ship the TipTap editor stack to every
+// card in the feed for a path most of them never take.
+const JournalEditorInline = lazy(() => import('./JournalEditorInline'));
 
 interface JournalEntryCardProps {
   entry: JournalEntry;
@@ -54,11 +59,13 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, className, i
 
   if (state.isEditing) {
     return (
-      <JournalEditorInline
-        entry={entry}
-        onSave={state.stopEditing}
-        onCancel={state.stopEditing}
-      />
+      <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto my-20" />}>
+        <JournalEditorInline
+          entry={entry}
+          onSave={state.stopEditing}
+          onCancel={state.stopEditing}
+        />
+      </Suspense>
     );
   }
 

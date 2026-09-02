@@ -29,6 +29,38 @@ interface JournalContextType {
 
 const JournalContext = createContext<JournalContextType | undefined>(undefined);
 
+/**
+ * `journal_entries.entry_text` holds content AND comments folded into one
+ * encrypted JSON blob (see encryptJournalEntry/decryptJournalEntry) — there
+ * is no way to update one without rewriting the whole column. Every write
+ * below therefore re-fetches the row fresh and applies its change on top of
+ * *that*, instead of trusting whatever this tab last loaded into local
+ * state — otherwise an entry edited in one tab (or session) and commented
+ * on in another silently loses whichever write lands second, with no
+ * warning and no merge. This narrows the window to the gap between this
+ * fetch and the write below (an unavoidable read-then-write gap without
+ * server-side optimistic-concurrency checks or, better, giving comments
+ * their own table+rows so they can't collide with content at all — see the
+ * audit notes) rather than the entire lifetime of a tab.
+ */
+async function fetchFreshEntryBlob(
+  entryId: string,
+  userId: string,
+): Promise<{ content: string; comments: JournalComment[] }> {
+  const { data, error } = await supabase
+    .from('journal_entries')
+    .select('entry_text')
+    .eq('id', entryId)
+    .single();
+  if (error) throw error;
+
+  const decrypted = await decryptJournalEntry(
+    { content: data.entry_text, comments: [] as JournalComment[] },
+    userId,
+  );
+  return { content: decrypted.content, comments: decrypted.comments ?? [] };
+}
+
 export const useJournal = () => {
   const context = useContext(JournalContext);
   if (!context) {
@@ -125,7 +157,19 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
 
     try {
       const now = new Date();
-      const encryptedEntry = await encryptJournalEntry(updatedEntry, userId);
+      // Mood/track/weather/reflection genuinely come from this editing
+      // session — that's what's being saved. Comments don't: this view
+      // doesn't show or edit them (see JournalEditorInline), so carry
+      // forward whatever is *actually* on the row right now rather than
+      // whatever this session's `updatedEntry.comments` happens to hold
+      // (typically whatever was loaded when editing started) — otherwise
+      // saving an edit here can silently erase a note added elsewhere in
+      // the meantime.
+      const fresh = await fetchFreshEntryBlob(updatedEntry.id, userId);
+      const encryptedEntry = await encryptJournalEntry(
+        { ...updatedEntry, comments: fresh.comments },
+        userId,
+      );
       const payload = buildDbPayload(updatedEntry, encryptedEntry.content);
 
       const { error } = await supabase
@@ -135,7 +179,7 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
 
       if (error) throw error;
 
-      const withTimestamp = { ...updatedEntry, updatedAt: now.getTime() };
+      const withTimestamp = { ...updatedEntry, comments: fresh.comments, updatedAt: now.getTime() };
       setEntries(prev => prev.map(e => e.id === updatedEntry.id ? withTimestamp : e));
     } catch (error: unknown) {
       logger.error('JournalContext', 'updateEntry failed:', error);
@@ -145,14 +189,19 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
 
   const updateEntryContent = useCallback(async (entryId: string, newContent: string) => {
     if (!userId) throw new Error('Authentication required');
-
-    const entryToUpdate = entries.find(e => e.id === entryId);
-    if (!entryToUpdate) throw new Error('Entry not found');
+    if (!entries.some(e => e.id === entryId)) throw new Error('Entry not found');
 
     try {
       const now = new Date();
-      const updatedEntry: JournalEntry = { ...entryToUpdate, content: newContent };
-      const encryptedEntry = await encryptJournalEntry(updatedEntry, userId);
+      // Comments live in the same blob as content (see fetchFreshEntryBlob)
+      // — carry forward whatever is actually on the row right now, not this
+      // tab's possibly-stale local copy, so a note added elsewhere isn't
+      // silently wiped out by this content autosave.
+      const fresh = await fetchFreshEntryBlob(entryId, userId);
+      const encryptedEntry = await encryptJournalEntry(
+        { content: newContent, comments: fresh.comments },
+        userId,
+      );
 
       const { error } = await supabase
         .from('journal_entries')
@@ -165,7 +214,9 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
       if (error) throw error;
 
       setEntries(prev => prev.map(e =>
-        e.id === entryId ? { ...e, content: newContent, updatedAt: now.getTime() } : e,
+        e.id === entryId
+          ? { ...e, content: newContent, comments: fresh.comments, updatedAt: now.getTime() }
+          : e,
       ));
     } catch (error: unknown) {
       logger.error('JournalContext', 'updateEntryContent failed:', error);
@@ -211,24 +262,26 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
 
   const addCommentToEntry = useCallback(async (entryId: string, content: string) => {
     if (!userId) return;
-
-    const entryToUpdate = entries.find(e => e.id === entryId);
-    if (!entryToUpdate) throw new Error('Entry not found');
+    if (!entries.some(e => e.id === entryId)) throw new Error('Entry not found');
 
     try {
       const now = new Date();
       const newComment: JournalComment = {
-        id: `comment-${Date.now()}`,
+        // crypto.randomUUID(), not `comment-${Date.now()}`: two comments
+        // added within the same millisecond (a double-submit, or just fast
+        // clicking) previously collided on id, which the fetch-fresh merge
+        // below can't protect against on its own since it's a client-side
+        // key collision, not a server race.
+        id: crypto.randomUUID(),
         content,
         createdAt: now.getTime(),
       };
 
-      const updatedEntry: JournalEntry = {
-        ...entryToUpdate,
-        comments: [...(entryToUpdate.comments || []), newComment],
-      };
-
-      const encryptedEntry = await encryptJournalEntry(updatedEntry, userId);
+      // See fetchFreshEntryBlob: append onto the row as it actually is
+      // right now, not this tab's local snapshot.
+      const fresh = await fetchFreshEntryBlob(entryId, userId);
+      const nextComments = [...fresh.comments, newComment];
+      const encryptedEntry = await encryptJournalEntry({ content: fresh.content, comments: nextComments }, userId);
 
       const { error } = await supabase
         .from('journal_entries')
@@ -242,7 +295,7 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
 
       setEntries(prev => prev.map(e =>
         e.id === entryId
-          ? { ...e, comments: [...(e.comments || []), newComment], updatedAt: now.getTime() }
+          ? { ...e, content: fresh.content, comments: nextComments, updatedAt: now.getTime() }
           : e,
       ));
     } catch (error: unknown) {
@@ -253,14 +306,14 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
 
   const deleteCommentFromEntry = useCallback(async (entryId: string, commentId: string) => {
     if (!userId) return;
-
-    const entryToUpdate = entries.find(e => e.id === entryId);
-    if (!entryToUpdate) throw new Error('Entry not found');
+    if (!entries.some(e => e.id === entryId)) throw new Error('Entry not found');
 
     try {
-      const updatedComments = (entryToUpdate.comments || []).filter(c => c.id !== commentId);
-      const updatedEntry: JournalEntry = { ...entryToUpdate, comments: updatedComments };
-      const encryptedEntry = await encryptJournalEntry(updatedEntry, userId);
+      // See fetchFreshEntryBlob: delete from the row as it actually is
+      // right now, not this tab's local snapshot.
+      const fresh = await fetchFreshEntryBlob(entryId, userId);
+      const nextComments = fresh.comments.filter(c => c.id !== commentId);
+      const encryptedEntry = await encryptJournalEntry({ content: fresh.content, comments: nextComments }, userId);
 
       const now = new Date();
       const { error } = await supabase
@@ -275,7 +328,7 @@ export const JournalProvider = ({ children }: JournalProviderProps) => {
 
       setEntries(prev => prev.map(e =>
         e.id === entryId
-          ? { ...e, comments: updatedComments, updatedAt: now.getTime() }
+          ? { ...e, content: fresh.content, comments: nextComments, updatedAt: now.getTime() }
           : e,
       ));
     } catch (error: unknown) {

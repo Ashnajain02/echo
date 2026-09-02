@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { invokeFunctionWithTimeout } from '@/lib/invokeFunction';
 import { logger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 
@@ -18,18 +18,19 @@ export const generateReflectionQuestions = async (
   const functionName = demo ? 'generate-reflection-demo' : 'generate-reflection';
 
   try {
-    const { data, error } = await supabase.functions.invoke(functionName, {
-      body: { content, mood, track },
-    });
+    const { data, error } = await invokeFunctionWithTimeout<{
+      reflectionQuestions?: string[];
+      reflectionQuestion?: string;
+    }>(functionName, { body: { content, mood, track } });
 
-    if (error) {
-      logger.error('api', `${functionName} returned error:`, error);
-      throw new Error(getErrorMessage(error, 'Error generating reflection questions'));
-    }
+    if (error) throw error;
+    if (!data) throw new Error('No reflection questions returned');
 
-    return data.reflectionQuestions || [data.reflectionQuestion];
+    return data.reflectionQuestions || (data.reflectionQuestion ? [data.reflectionQuestion] : []);
   } catch (error) {
     logger.error('api', `${functionName} call failed:`, error);
-    throw new Error('Failed to generate reflection questions. Please try again later.');
+    // Preserves a FunctionTimeoutError's specific message when that's what
+    // happened, instead of masking every failure behind one generic string.
+    throw new Error(getErrorMessage(error, 'Failed to generate reflection questions. Please try again later.'));
   }
 };

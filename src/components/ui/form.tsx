@@ -155,6 +155,15 @@ const FormMessage = React.forwardRef<
     <p
       ref={ref}
       id={formMessageId}
+      // role="alert" (an implicit aria-live="assertive" region) only while
+      // this is actually a validation error — otherwise it'd announce
+      // ordinary helper text as if something had gone wrong. aria-describedby
+      // (see FormControl below) already ties the field to this message for
+      // when it's read on focus; this is what covers the case where the
+      // error appears while focus is already elsewhere (e.g. submitting via
+      // Enter from the field above) — without it, nothing tells a
+      // screen-reader user a validation error just appeared at all.
+      role={error ? "alert" : undefined}
       className={cn("text-sm font-medium text-destructive", className)}
       {...props}
     >

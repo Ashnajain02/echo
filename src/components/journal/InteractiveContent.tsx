@@ -1,6 +1,7 @@
 
 import React, { useCallback, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { serializeEntryContent } from './future-letters/liveLetterDom';
 
 interface InteractiveContentProps {
   content: string;
@@ -54,10 +55,12 @@ const InteractiveContent: React.FC<InteractiveContentProps> = ({
     const isChecked = target.checked;
     listItem.setAttribute('data-checked', isChecked.toString());
     
-    // Get the updated HTML from the container
+    // Get the updated HTML from the container. Serialize through
+    // serializeEntryContent, never raw innerHTML: an arrived future letter has
+    // a live React card portalled in next to its chip, and that markup must
+    // not be persisted as part of the entry.
     if (containerRef.current && onContentChange) {
-      const updatedContent = containerRef.current.innerHTML;
-      onContentChange(updatedContent);
+      onContentChange(serializeEntryContent(containerRef.current));
     }
     
     // Reset saving flag after a short delay

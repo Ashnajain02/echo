@@ -1,13 +1,26 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import type { JournalEntry } from '@/types';
 import CommentSection from './CommentSection';
 import TrackClipPlayer from '@/components/music/TrackClipPlayer';
 import EntryPageLayout from '@/components/shared/EntryPageLayout';
 import InteractiveContent from './InteractiveContent';
-import JournalEditorInline from './JournalEditorInline';
 import ReflectionModule from './ReflectionModule';
 import EntryActions from './EntryActions';
 import { useEntryState } from './useEntryState';
+import { useEntryFutureLetters } from '@/hooks/useFutureLetters';
+import FutureLetterCard from './future-letters/FutureLetterCard';
+import { useFutureLetterPortalTargets } from './future-letters/useFutureLetterPortalTargets';
+
+// Lazy: this component is reachable from LandingPage (via LandingEntry),
+// which every logged-out visitor sees, and `isPreview` there means the edit
+// path below can never actually trigger — but a *static* import still
+// bundles JournalEditorInline's full TipTap dependency graph into that same
+// eager chunk regardless of whether it's reachable. Splitting it out means
+// LandingPage's demo entry, and every read-only entry in the main feed,
+// stops paying for an editor it isn't using.
+const JournalEditorInline = lazy(() => import('./JournalEditorInline'));
 
 interface JournalEntryFullViewProps {
   entry: JournalEntry;
@@ -39,14 +52,18 @@ const JournalEntryFullView: React.FC<JournalEntryFullViewProps> = ({
   initialWeatherEnabled,
 }) => {
   const state = useEntryState({ entry, isPreview, initialWeatherEnabled });
+  const { letters: futureLetters, openLetter, saveReply } = useEntryFutureLetters(isPreview ? undefined : entry.id);
+  const letterPortals = useFutureLetterPortalTargets(state.contentRef, state.localContent, futureLetters);
 
   if (state.isEditing) {
     return (
-      <JournalEditorInline
-        entry={entry}
-        onSave={state.stopEditing}
-        onCancel={state.stopEditing}
-      />
+      <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto my-20" />}>
+        <JournalEditorInline
+          entry={entry}
+          onSave={state.stopEditing}
+          onCancel={state.stopEditing}
+        />
+      </Suspense>
     );
   }
 
@@ -109,6 +126,16 @@ const JournalEntryFullView: React.FC<JournalEntryFullViewProps> = ({
             onContentChange={state.handleContentChange}
             disabled={isPreview}
           />
+          {/* Once a sealed letter is due, its live card portals directly into
+              the chip's own position in the text above — same box for its
+              whole lifecycle, not a second one down here. */}
+          {letterPortals.map(({ letter, mountEl }) =>
+            createPortal(
+              <FutureLetterCard letter={letter} onOpen={openLetter} onSaveReply={saveReply} />,
+              mountEl,
+              letter.id,
+            )
+          )}
         </div>
         {state.shouldBlurContent && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

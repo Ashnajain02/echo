@@ -53,3 +53,23 @@ export interface JournalEntry {
   reflectionQuestion?: string;
   reflectionAnswer?: string;
 }
+
+export type FutureLetterKind = 'note' | 'question';
+
+/**
+ * A short note or question written inline while journaling, sealed with a
+ * random future delivery date, and re-attached to the entry it came from.
+ * `message`/`reply` are decrypted client-side the same way entry content is —
+ * never stored or transmitted in plaintext.
+ */
+export interface FutureLetter {
+  id: string;
+  sourceEntryId: string | null;
+  kind: FutureLetterKind;
+  message: string;
+  reply?: string;
+  deliverAt: string; // ISO 8601 timestamp (timestamptz) — carries a time, not just a date
+  createdAt: number;
+  openedAt?: number;
+  repliedAt?: number;
+}

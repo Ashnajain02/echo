@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 
 import { supabase } from '@/integrations/supabase/client';
 import { generateReflectionQuestions } from '@/services/api';
 import { useIsDemoMode } from '@/contexts/DemoModeContext';
 import { logger } from '@/lib/logger';
+import { getErrorMessage } from '@/lib/errors';
 import { trackEvent } from '@/lib/analytics';
 import ReflectionQuestion from './reflection/ReflectionQuestion';
 import ReflectionEditor from './reflection/ReflectionEditor';
@@ -59,6 +61,11 @@ const ReflectionModule: React.FC<ReflectionModuleProps> = ({
       trackEvent('reflection_generated');
     } catch (error) {
       logger.error('ReflectionModule', 'failed to generate reflection questions:', error);
+      // api.ts already crafts a specific message here (including a distinct
+      // one for a timed-out edge function) — show it instead of leaving the
+      // trigger button just silently reset to its initial state, as if
+      // nothing had been clicked at all.
+      toast.error(getErrorMessage(error, "Couldn't generate a reflection question. Please try again."));
     } finally {
       setIsLoading(false);
     }
@@ -94,6 +101,11 @@ const ReflectionModule: React.FC<ReflectionModuleProps> = ({
       onReflectionUpdate();
     } catch (error) {
       logger.error('ReflectionModule', 'failed to save reflection:', error);
+      // The editor deliberately stays open (setIsEditing(false) above never
+      // ran) so the answer isn't lost — but without this, "stays open" was
+      // the *only* signal anything went wrong, indistinguishable from just
+      // not having clicked Save yet.
+      toast.error("Couldn't save your reflection. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -122,6 +134,10 @@ const ReflectionModule: React.FC<ReflectionModuleProps> = ({
       onReflectionUpdate();
     } catch (error) {
       logger.error('ReflectionModule', 'failed to delete reflection:', error);
+      // On failure none of the state resets above ran, so the reflection is
+      // still showing — correct — but still needs to say *why* the delete
+      // didn't go through instead of just quietly not doing anything.
+      toast.error("Couldn't delete your reflection. Please try again.");
     } finally {
       setIsLoading(false);
     }

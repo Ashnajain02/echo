@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { JournalEntry } from '@/types';
 import { getPlainTextContent } from '@/utils/journalEntryMapper';
 import { useJournal } from '@/contexts/JournalContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { processPendingFutureLetters } from '@/utils/futureLetters';
+import { trackEvent } from '@/lib/analytics';
+import { logger } from '@/lib/logger';
+import { getErrorMessage } from '@/lib/errors';
 
 import { Button } from '@/components/ui/button';
 import MusicSection from '@/components/music/MusicSection';
@@ -24,6 +30,7 @@ const JournalEditorInline: React.FC<JournalEditorInlineProps> = ({
   onCancel
 }) => {
   const { updateEntry } = useJournal();
+  const { authState } = useAuth();
 
   const {
     weatherData,
@@ -43,9 +50,20 @@ const JournalEditorInline: React.FC<JournalEditorInlineProps> = ({
 
     setIsSaving(true);
     try {
+      let finalContent = content;
+      if (authState.user) {
+        const { content: processedContent, created } = await processPendingFutureLetters(
+          content,
+          initialEntry.id,
+          authState.user.id,
+        );
+        finalContent = processedContent;
+        created.forEach(() => trackEvent('future_letter_created'));
+      }
+
       const updatedEntry: JournalEntry = {
         ...initialEntry,
-        content,
+        content: finalContent,
         mood: selectedMood,
         weather: weatherData || initialEntry.weather,
         track: selectedTrack,
@@ -53,7 +71,12 @@ const JournalEditorInline: React.FC<JournalEditorInlineProps> = ({
       await updateEntry(updatedEntry);
       onSave();
     } catch (error) {
-      console.error('Error saving journal entry:', error);
+      // Editor deliberately stays open (onSave() above didn't run) so
+      // nothing typed is lost — but that was previously the only signal;
+      // logged-only-to-console meant no one but this one browser's devtools
+      // ever saw it, and no message meant the user didn't either.
+      logger.error('JournalEditorInline', 'failed to save entry:', error);
+      toast.error(getErrorMessage(error, "Couldn't save your changes. Please try again."));
     } finally {
       setIsSaving(false);
     }

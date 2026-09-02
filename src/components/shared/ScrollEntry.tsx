@@ -34,6 +34,11 @@ const ScrollEntry: React.FC<ScrollEntryProps> = ({ entry, isPreview = false, sho
   return (
     <div
       ref={containerRef}
+      // Targeted by the letter-arrived banner (FutureLetterArrivalBanner) to
+      // scroll a clicked notification to its source entry — this is a single
+      // continuous scroll feed with every entry already mounted, so a plain
+      // element id is all "jump to entry" needs; no route to navigate.
+      id={`entry-${entry.id}`}
       className="min-h-screen flex items-center justify-center py-20"
     >
       <div className="w-full max-w-3xl mx-auto px-6 md:px-16">
