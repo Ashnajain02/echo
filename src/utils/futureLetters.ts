@@ -1,7 +1,7 @@
 /**
  * Future Letters — a short note or question, written inline while journaling
- * (see futureLetterNode.ts for the composer block), sealed with a random
- * delivery date 1–2 years out, and re-attached to the entry it came from.
+ * (see futureLetterNode.ts for the composer block), sealed with a delivery
+ * date 6 months out, and re-attached to the entry it came from.
  *
  * message/reply are client-side encrypted with the same primitives as entry
  * content (see @/utils/encryption) — same trust level as an entry itself.
@@ -14,28 +14,26 @@ import { logger } from '@/lib/logger';
 
 type FutureLetterRow = Database['public']['Tables']['future_letters']['Row'];
 
-const MIN_DAYS_OUT = 365;
-const MAX_DAYS_OUT = 730;
+const DELIVERY_MONTHS_OUT = 6;
 
 // Dev-only testing aid: in `npm run dev` (import.meta.env.DEV), letters
-// arrive 30 seconds after being sealed instead of 1–2 years out, so the
+// arrive 30 seconds after being sealed instead of 6 months out, so the
 // arrival/opening experience can be previewed without waiting. This reverts
 // automatically in production builds (`vite build`) — nothing to remember
 // to undo before shipping.
 const DEV_DELIVERY_DELAY_MS = 30_000;
 
 /**
- * Picks the delivery date — a random 1–2 years out in production, or 30
- * seconds out in dev builds (see above). Returns a full ISO timestamp.
+ * Picks the delivery date — 6 months out in production, or 30 seconds out
+ * in dev builds (see above). Returns a full ISO timestamp.
  */
-export function randomDeliveryDate(from: Date = new Date()): string {
+export function defaultDeliveryDate(from: Date = new Date()): string {
   if (import.meta.env.DEV) {
     return new Date(from.getTime() + DEV_DELIVERY_DELAY_MS).toISOString();
   }
 
-  const days = MIN_DAYS_OUT + Math.floor(Math.random() * (MAX_DAYS_OUT - MIN_DAYS_OUT + 1));
   const deliver = new Date(from);
-  deliver.setDate(deliver.getDate() + days);
+  deliver.setMonth(deliver.getMonth() + DELIVERY_MONTHS_OUT);
   return deliver.toISOString();
 }
 
@@ -68,7 +66,7 @@ export async function createFutureLetter(params: {
   deliverAt?: string;
 }): Promise<FutureLetter | null> {
   const { userId, sourceEntryId, kind, message } = params;
-  const deliverAt = params.deliverAt ?? randomDeliveryDate();
+  const deliverAt = params.deliverAt ?? defaultDeliveryDate();
 
   try {
     const messageEncrypted = await encryptText(message, userId);
