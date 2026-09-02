@@ -58,7 +58,7 @@ export type FutureLetterKind = 'note' | 'question';
 
 /**
  * A short note or question written inline while journaling, sealed with a
- * random future delivery date, and re-attached to the entry it came from.
+ * delivery date 6 months out, and re-attached to the entry it came from.
  * `message`/`reply` are decrypted client-side the same way entry content is —
  * never stored or transmitted in plaintext.
  */

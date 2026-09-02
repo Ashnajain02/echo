@@ -16,7 +16,7 @@ function isLive(letter: FutureLetter, now: number): boolean {
 
 /**
  * Only arm a timer for a letter arriving within the next day. Delivery is
- * normally 1–2 years out, and setTimeout silently fires immediately past
+ * normally 6 months out, and setTimeout silently fires immediately past
  * ~24.8 days (32-bit overflow) — so anything beyond the horizon is left to
  * the next page load, which is the delivery model anyway.
  */
